@@ -9,6 +9,8 @@ export default function Home() {
   const [step, setStep] = useState('splash'); // splash, login, phone, otp, permission
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -42,16 +44,58 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         phone: '+57' + phone.replace(/\D/g, ''),
         token: otp,
         type: 'sms',
       });
       if (error) throw error;
+      
+      // Consultar el perfil para ver si es usuario nuevo
+      if (data?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (!profile?.first_name || profile.first_name === 'Usuario Nuevo') {
+          setStep('register');
+          setLoading(false);
+          return;
+        }
+      }
+      
       setStep('benefits');
       setLoading(false);
     } catch (err) {
       setError(err.message || 'Código incorrecto');
+      setLoading(false);
+    }
+  };
+
+  const handleRegisterProfile = async () => {
+    if (!firstName) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          first_name: firstName.trim(), 
+          last_name: lastName.trim() 
+        })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      setStep('benefits');
+      setLoading(false);
+    } catch (err) {
+      setError(err.message || 'Error al guardar el perfil');
       setLoading(false);
     }
   };
@@ -163,6 +207,31 @@ export default function Home() {
           {error && <div style={{ color: '#d32f2f', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
           <div style={{ flex: 1 }}></div>
           <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} style={{ height: '56px', borderRadius: '14px', background: otp.length >= 6 ? '#000' : '#e0e0e0', color: otp.length >= 6 ? '#fff' : '#999', font: '700 16px Manrope,sans-serif', width: '100%', marginBottom: '12px', border: 'none', transition: 'background 0.2s' }}>{loading ? 'Verificando...' : 'Verificar'}</button>
+        </div>
+      )}
+
+      {step === 'register' && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
+          <div style={{ font: '800 28px/1.1 Manrope,sans-serif', letterSpacing: '-.04em', marginBottom: '8px', color: '#111' }}>Crea tu cuenta</div>
+          <div style={{ font: '500 15px/1.5 Manrope,sans-serif', color: '#666', marginBottom: '32px' }}>¿Cómo te llamas?</div>
+          
+          <input 
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Nombre"
+            style={{ height: '56px', borderRadius: '14px', background: '#f5f5f5', border: 'none', padding: '0 16px', font: "600 16px Manrope,sans-serif", color: '#111', outline: 'none', marginBottom: '12px' }}
+          />
+          <input 
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Apellido (opcional)"
+            style={{ height: '56px', borderRadius: '14px', background: '#f5f5f5', border: 'none', padding: '0 16px', font: "600 16px Manrope,sans-serif", color: '#111', outline: 'none' }}
+          />
+          {error && <div style={{ color: '#d32f2f', fontSize: '13px', marginTop: '12px' }}>{error}</div>}
+          <div style={{ flex: 1 }}></div>
+          <button onClick={handleRegisterProfile} disabled={loading || !firstName} style={{ height: '56px', borderRadius: '14px', background: firstName ? '#000' : '#e0e0e0', color: firstName ? '#fff' : '#999', font: '700 16px Manrope,sans-serif', width: '100%', marginBottom: '12px', border: 'none', transition: 'background 0.2s' }}>{loading ? 'Guardando...' : 'Continuar'}</button>
         </div>
       )}
 

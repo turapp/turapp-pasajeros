@@ -3,10 +3,47 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import BottomNav from '../../components/BottomNav';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function ServicesPage() {
   const router = useRouter();
   const [step, setStep] = useState('services'); // services, serviceDetail, package, schedule, favor
+
+  const [favorType, setFavorType] = useState('Comprar');
+  const [favorDescription, setFavorDescription] = useState('');
+  const [favorBudget, setFavorBudget] = useState(20000);
+  const [favorLoading, setFavorLoading] = useState(false);
+  const [favorError, setFavorError] = useState(null);
+
+  const handleRequestFavor = async () => {
+    setFavorLoading(true);
+    setFavorError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No has iniciado sesión');
+
+      const { error } = await supabase
+        .from('favors')
+        .insert({
+          passenger_id: user.id,
+          favor_type: favorType,
+          description: favorDescription || 'Comprar leche y pan',
+          max_budget: favorBudget,
+          pickup_address: 'Éxito Buenaventura · Calle 7',
+          dropoff_address: 'Calle 6 #3-24, Comuna 4',
+          service_fee: 7900,
+        });
+
+      if (error) throw error;
+      
+      alert('¡Tura favor solicitado con éxito!');
+      router.push('/home');
+    } catch (err) {
+      setFavorError(err.message || 'Error al solicitar el favor');
+    } finally {
+      setFavorLoading(false);
+    }
+  };
 
   const svcCards = [
     { 
@@ -302,12 +339,12 @@ export default function ServicesPage() {
             <div style={{ font: '800 17px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '12px' }}>¿Qué necesitas?</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px', marginBottom: '22px' }}>
               {[
-                { name: 'Comprar', sub: 'Farmacia, súper', glyph: '🛒', active: true },
-                { name: 'Recoger', sub: 'Llaves, ropa', glyph: '🛍️', active: false },
-                { name: 'Hacer fila', sub: 'Bancos, trámites', glyph: '⏳', active: false },
-                { name: 'Otro', sub: 'Escríbelo abajo', glyph: '💬', active: false }
+                { name: 'Comprar', sub: 'Farmacia, súper', glyph: '🛒' },
+                { name: 'Recoger', sub: 'Llaves, ropa', glyph: '🛍️' },
+                { name: 'Hacer fila', sub: 'Bancos, trámites', glyph: '⏳' },
+                { name: 'Otro', sub: 'Escríbelo abajo', glyph: '💬' }
               ].map((fk, i) => (
-                <button key={i} style={{ borderRadius: '14px', background: 'var(--sf)', padding: '14px', display: 'flex', gap: '10px', alignItems: 'center', border: fk.active ? '2px solid var(--tx)' : '2px solid transparent' }}>
+                <button key={i} onClick={() => setFavorType(fk.name)} style={{ borderRadius: '14px', background: 'var(--sf)', padding: '14px', display: 'flex', gap: '10px', alignItems: 'center', border: favorType === fk.name ? '2px solid var(--tx)' : '2px solid transparent' }}>
                   <div style={{ fontSize: '24px', flex: 'none' }}>{fk.glyph}</div>
                   <div style={{ textAlign: 'left', minWidth: 0 }}>
                     <div style={{ font: '700 13.5px Manrope,sans-serif' }}>{fk.name}</div>
@@ -319,7 +356,12 @@ export default function ServicesPage() {
             
             <div style={{ font: '800 17px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '11px' }}>Detalles del mandado</div>
             <div style={{ borderRadius: '14px', background: 'var(--sf)', padding: '15px 16px', marginBottom: '12px', minHeight: '92px' }}>
-              <div style={{ font: '500 13px/1.6 Manrope,sans-serif', color: 'var(--mu)' }}>Ej: Compra 2 bolsas de leche deslactosada Colanta y 1 paquete de pan tajado Bimbo blanco. Paga con el dinero del presupuesto, yo te transfiero al entregar.</div>
+              <textarea 
+                value={favorDescription}
+                onChange={(e) => setFavorDescription(e.target.value)}
+                placeholder="Ej: Compra 2 bolsas de leche deslactosada Colanta y 1 paquete de pan tajado Bimbo blanco. Paga con el dinero del presupuesto, yo te transfiero al entregar."
+                style={{ width: '100%', height: '62px', background: 'transparent', border: 'none', resize: 'none', font: '500 13px/1.6 Manrope,sans-serif', color: 'var(--tx)', outline: 'none' }}
+              />
             </div>
             
             <div style={{ borderRadius: '14px', background: 'var(--sf)', overflow: 'hidden', marginBottom: '12px' }}>
@@ -336,19 +378,19 @@ export default function ServicesPage() {
             <div style={{ font: '800 17px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '11px' }}>Presupuesto para la compra</div>
             <div style={{ display: 'flex', gap: '9px', marginBottom: '12px' }}>
               {[
-                { label: 'Nada (fila/recoger)', active: false },
-                { label: '$20.000', active: true },
-                { label: '$50.000', active: false }
+                { label: 'Nada (fila/recoger)', value: 0 },
+                { label: '$20.000', value: 20000 },
+                { label: '$50.000', value: 50000 }
               ].map((fb, i) => (
-                <button key={i} style={{ flex: 1, height: '44px', borderRadius: '10px', background: 'var(--sf)', font: "700 13px 'IBM Plex Mono',monospace", border: fb.active ? '2px solid var(--tx)' : '2px solid transparent' }}>{fb.label}</button>
+                <button key={i} onClick={() => setFavorBudget(fb.value)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: 'var(--sf)', font: "700 13px 'IBM Plex Mono',monospace", border: favorBudget === fb.value ? '2px solid var(--tx)' : '2px solid transparent' }}>{fb.label}</button>
               ))}
             </div>
             
             <div style={{ borderRadius: '14px', background: 'var(--sf)', padding: '15px 16px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '4px 0', font: '500 13px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}><div>Costo del servicio</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>$7.900</div></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '4px 0', font: '500 13px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}><div>Presupuesto</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>$20.000</div></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '4px 0', font: '500 13px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}><div>Presupuesto</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${favorBudget.toLocaleString('es-CO')}</div></div>
               <div style={{ height: '1px', background: 'var(--bd)', margin: '9px 0' }}></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', font: '800 15.5px Manrope,sans-serif' }}><div>Total</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>$27.900</div></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', font: '800 15.5px Manrope,sans-serif' }}><div>Total</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${(favorBudget + 7900).toLocaleString('es-CO')}</div></div>
             </div>
             
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '13px 15px', borderRadius: '12px', background: 'var(--jadeS)', marginBottom: '18px' }}>
@@ -356,7 +398,8 @@ export default function ServicesPage() {
               <div style={{ font: '600 11px/1.5 Manrope,sans-serif', color: 'var(--jade)' }}>Asegúrate de tener saldo en Turapp Cash o Nequi para transferir el costo del producto apenas el conductor te envíe la factura.</div>
             </div>
             
-            <button onClick={() => router.push('/home')} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%' }}>Pedir Turafavor</button>
+            {favorError && <div style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '12px', textAlign: 'center' }}>{favorError}</div>}
+            <button onClick={handleRequestFavor} disabled={favorLoading} style={{ height: '54px', borderRadius: '13px', background: favorLoading ? '#666' : 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', transition: 'background 0.2s' }}>{favorLoading ? 'Procesando...' : 'Pedir Turafavor'}</button>
           </div>
         </div>
       )}
