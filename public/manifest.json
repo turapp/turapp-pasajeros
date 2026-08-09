@@ -1,0 +1,62 @@
+{
+  "name": "Turapp — Buenaventura",
+  "short_name": "Turapp",
+  "description": "Carros, taxis, motos y envíos en Buenaventura. Pide en segundos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "categories": [
+    "travel",
+    "navigation",
+    "transportation"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pedir un carro",
+      "short_name": "Carro",
+      "url": "/?flow=ride"
+    },
+    {
+      "name": "Viajes a Cali",
+      "short_name": "Cali",
+      "url": "/cali"
+    },
+    {
+      "name": "Tura favor",
+      "short_name": "Favor",
+      "url": "/services"
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "text": "destino"
+    }
+  }
+}

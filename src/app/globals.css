@@ -1,49 +1,128 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Turapp — design tokens, keyframes, resets. Layout lives inline. */
+.tr-app{
+  --bg:#ffffff; --sf:#f4f4f3; --sf2:#eaeae8; --bd:rgba(0,0,0,.10); --bd2:rgba(0,0,0,.06);
+  --tx:#0a0a0a; --mu:#6f6f6f; --inv:#0a0a0a; --invtx:#ffffff;
+  --jade:#0f8a6d; --jadeS:#e7f3ef; --amber:#c98a1e; --amberS:#faf0dd; --red:#c8402f; --redS:#fbeceb;
+  --map:#ecebe6; --mapline:#fdfdfc; --mapblock:#e0ded7; --mappark:#d7e2d0; --mapwater:#cbd9e2;
+  --sh:0 10px 34px rgba(0,0,0,.13); --sh2:0 2px 10px rgba(0,0,0,.07);
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.tr-app[data-theme="dark"]{
+  --bg:#0b0b0c; --sf:#17181a; --sf2:#222427; --bd:rgba(255,255,255,.13); --bd2:rgba(255,255,255,.07);
+  --tx:#f7f7f8; --mu:#9a9aa0; --inv:#ffffff; --invtx:#0a0a0a;
+  --jade:#33c39c; --jadeS:#10241f; --amber:#e9b45f; --amberS:#241c0e; --red:#f0705e; --redS:#2a1512;
+  --map:#141619; --mapline:#242730; --mapblock:#1b1e22; --mappark:#182420; --mapwater:#101922;
+  --sh:0 10px 34px rgba(0,0,0,.6); --sh2:0 2px 10px rgba(0,0,0,.4);
 }
+.tr-app, .tr-app *{box-sizing:border-box; margin:0; padding:0;}
+.tr-app{font-family:Manrope,-apple-system,'Helvetica Neue',Helvetica,sans-serif; letter-spacing:-0.01em;}
+.tr-app button{font:inherit; color:inherit; border:0; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.2s cubic-bezier(0.2,0.8,0.2,1), background 0.2s ease, opacity 0.2s ease;}
+.tr-app input{font:inherit; color:inherit; background:none; border:0; outline:none; transition:border-color 0.2s ease;}
+.tr-sb{scrollbar-width:none; -ms-overflow-style:none;}
+.tr-sb::-webkit-scrollbar{display:none; width:0; height:0;}
+.tr-app a{color:var(--jade); text-decoration:none;}
+.tr-app a:hover{color:var(--tx);}
+.tr-app button:active { transform: scale(0.96); opacity: 0.9; }
+@keyframes trPulse{0%{transform:scale(.35);opacity:.55}70%{opacity:0}100%{transform:scale(1.9);opacity:0}}
+@keyframes trSpin{to{transform:rotate(360deg)}}
+@keyframes trUp{from{transform:translateY(22px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes trUpS{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes trFade{from{opacity:0}to{opacity:1}}
+@keyframes trPop{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+@keyframes trShim{0%{background-position:-320px 0}100%{background-position:320px 0}}
+@keyframes trDrive{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes trDash{to{stroke-dashoffset:-64}}
+@keyframes trBlink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes trBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes trConf{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(300px) rotate(560deg);opacity:0}}
+@keyframes trRing{0%{box-shadow:0 0 0 0 rgba(15,138,109,.45)}100%{box-shadow:0 0 0 14px rgba(15,138,109,0)}}
+@keyframes trSlideL{from{transform:translateX(28px);opacity:0}to{transform:translateX(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){.tr-app *{animation-duration:.01ms !important;animation-iteration-count:1 !important}}
 
-html {
-  height: 100%;
-}
-
-html,
+/* IPHONE SIMULATOR WRAPPER FOR DESKTOP */
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  background-color: #0b0b0c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  overflow: hidden;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+#iphone-wrapper {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg, #fff);
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+@media (min-width: 600px) {
+  #iphone-wrapper {
+    width: 400px; /* Slightly wider for Pro Max */
+    height: 870px;
+    border-radius: 55px;
+    box-shadow: 0 0 0 10px #111, 0 0 0 14px #333, 0 24px 64px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+    margin: 20px auto;
+    /* This ensures fixed elements inside the wrapper are relative to the wrapper, not the viewport! */
+    transform: translateZ(0);
+  }
+  
+  /* Dynamic Island */
+  #iphone-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 35px;
+    background: #000;
+    border-radius: 20px;
+    z-index: 9999;
+    box-shadow: inset 0 0 4px rgba(255,255,255,0.2);
+  }
+
+  /* Status Bar */
+  #iphone-wrapper::after {
+    content: '9:24';
+    position: absolute;
+    top: 20px;
+    left: 36px;
+    font: 600 14px Manrope,sans-serif;
+    color: #111;
+    z-index: 9999;
+    letter-spacing: -0.02em;
+    pointer-events: none;
+  }
+
+  #iphone-wrapper-content::after {
+    content: '';
+    position: absolute;
+    top: 22px;
+    right: 28px;
+    width: 65px;
+    height: 15px;
+    background: url('data:image/svg+xml;utf8,<svg width="60" height="14" viewBox="0 0 60 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 10H14V14H12V10ZM16 7H18V14H16V7ZM20 4H22V14H20V4ZM24 1H26V14H24V1Z" fill="%23111"/><path d="M34 2C31.5 2 29.2 3.1 27.5 4.8L34 13L40.5 4.8C38.8 3.1 36.5 2 34 2Z" fill="%23111"/><rect x="46" y="2" width="12" height="10" rx="3" fill="none" stroke="%23111" stroke-width="1.5"/><rect x="48" y="4" width="8" height="6" rx="1.5" fill="%23111"/><path d="M59 6V8" stroke="%23111" stroke-width="1.5" stroke-linecap="round"/></svg>') no-repeat center/contain;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  /* Home Indicator */
+  #iphone-wrapper-content::before {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 5px;
+    background: #000;
+    border-radius: 10px;
+    z-index: 9999;
+    pointer-events: none;
   }
 }
