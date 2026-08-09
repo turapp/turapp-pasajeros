@@ -83,15 +83,13 @@ export default function SeatMapPage() {
         alert('Debes iniciar sesión para reservar.');
         return router.push('/');
       }
-      const userId = user.id;
-      
-      await caliService.reserveSeat(selectedSeat.id, userId, departure.price_block);
-      
+      await caliService.reserveSeat(selectedSeat.id, departureId);
+
       // Confirm and go back or to a success page
       alert('¡Puesto reservado exitosamente!');
       router.push('/home');
     } catch (err) {
-      alert('Error reservando puesto. Puede que alguien más lo haya tomado.');
+      alert(err.message || 'Error reservando puesto. Puede que alguien más lo haya tomado.');
       console.error(err);
     }
   };
@@ -128,11 +126,11 @@ export default function SeatMapPage() {
             <div style={{ font: '600 13px Manrope', color: 'var(--mu)', marginTop: '2px' }}>Abono requerido: 30%</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ font: "800 22px 'IBM Plex Mono'", color: 'var(--jade)' }}>${departure?.price_block}</div>
+            <div style={{ font: "800 22px 'IBM Plex Mono'", color: 'var(--jade)' }}>${departure?.current_price}</div>
           </div>
         </div>
         <button onClick={handleReserve} style={{ width: '100%', height: '54px', borderRadius: '14px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope' }}>
-          Abonar ${(departure?.price_block * 0.3).toFixed(0)} y Reservar
+          Abonar ${(departure?.current_price * 0.3).toFixed(0)} y Reservar
         </button>
       </div>
     </div>

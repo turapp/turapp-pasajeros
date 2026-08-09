@@ -8,9 +8,12 @@ export const caliService = {
       .select(`
         id,
         departure_time,
-        price_block,
+        current_price,
+        current_block,
+        total_seats,
+        occupied_seats,
         status,
-        vehicles ( license_plate ),
+        vehicles ( plate ),
         driver_profiles (
           profiles ( first_name, last_name )
         ),
@@ -33,9 +36,12 @@ export const caliService = {
       .select(`
         id,
         departure_time,
-        price_block,
+        current_price,
+        current_block,
+        total_seats,
+        occupied_seats,
         status,
-        vehicles ( license_plate ),
+        vehicles ( plate ),
         cali_seats ( status )
       `)
       .eq('driver_id', driverId)
@@ -64,28 +70,17 @@ export const caliService = {
     return data;
   },
 
-  // Reservar un asiento
-  async reserveSeat(seatId, riderId, price) {
-    // 30% del precio total como abono
-    const deposit = price * 0.3;
-    const balance = price * 0.7;
-
-    const { data, error } = await supabase
-      .from('cali_seats')
-      .update({ 
-        status: 'reserved', 
-        rider_id: riderId,
-        deposit_paid: deposit,
-        balance_due: balance
-      })
-      .eq('id', seatId)
-      .eq('status', 'available') // Optimistic concurrency check
-      .select()
-      .single();
+  // Reservar un asiento (vía Edge Function: calcula precio, abono y registra el pago server-side)
+  async reserveSeat(seatId, departureId) {
+    const { data, error } = await supabase.functions.invoke('reserve-seat', {
+      body: { seat_id: seatId, departure_id: departureId },
+    });
 
     if (error) {
-      console.error('Error reserving seat:', error);
-      throw error;
+      // El Edge Function devuelve { error: mensaje } en el body incluso en fallos 4xx
+      const body = await error.context?.json?.().catch(() => null);
+      console.error('Error reserving seat:', body?.error || error.message);
+      throw new Error(body?.error || 'No se pudo reservar el puesto.');
     }
     return data;
   },
