@@ -10,14 +10,16 @@ export const caliService = {
         departure_time,
         current_price,
         current_block,
+        block_changed_at,
+        price_block_1,
+        price_block_2,
+        price_block_3,
         total_seats,
         occupied_seats,
         status,
-        vehicles ( plate ),
-        driver_profiles (
-          profiles ( first_name, last_name )
-        ),
-        cali_seats ( status )
+        vehicles ( plate, make, model ),
+        profiles!cali_departures_driver_id_fkey ( first_name, last_name ),
+        cali_seats ( id, seat_number, status )
       `)
       .order('departure_time', { ascending: true });
 
