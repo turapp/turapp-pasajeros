@@ -83,21 +83,30 @@ export default function HomePage() {
         setStep('home');
         return;
       }
-      
-      const { data, error } = await supabase.from('trips').insert({
-        rider_id: user.id,
-        pickup_location: 'SRID=4326;POINT(-77.0267 4.8829)',
-        dropoff_location: 'SRID=4326;POINT(-77.0200 4.8800)',
-        pickup_address: 'Terminal Marítimo',
-        dropoff_address: 'Centro',
-        fare_estimated: 12400,
-        status: 'requested',
-        category: 'taxi' // Puede ser dinámico según lo seleccionado
-      }).select().single();
-      
-      if (error) throw error;
-      setTripId(data.id);
-      
+
+      // assign-driver crea el viaje, busca conductores cercanos y genera la
+      // oferta (ventana de 12s) — un insert directo a `trips` deja el viaje
+      // huérfano, sin trip_offer y sin conductor asignado.
+      const { data, error } = await supabase.functions.invoke('assign-driver', {
+        body: {
+          pickup_lat: pickupLoc[0],
+          pickup_lon: pickupLoc[1],
+          dropoff_lat: dropoffLoc[0],
+          dropoff_lon: dropoffLoc[1],
+          pickup_address: 'Terminal Marítimo',
+          dropoff_address: 'Centro',
+          category: 'taxi', // Puede ser dinámico según lo seleccionado
+          payment_method: 'cash',
+        },
+      });
+
+      if (error) {
+        const body = await error.context?.json?.().catch(() => null);
+        throw new Error(body?.error || error.message);
+      }
+
+      setTripId(data.trip_id);
+
     } catch (err) {
       alert("Error al pedir viaje: " + err.message);
       setStep('home');

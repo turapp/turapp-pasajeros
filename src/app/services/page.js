@@ -15,6 +15,14 @@ export default function ServicesPage() {
   const [favorLoading, setFavorLoading] = useState(false);
   const [favorError, setFavorError] = useState(null);
 
+  // La tabla favors solo acepta estos 4 valores (CHECK constraint)
+  const FAVOR_TYPE_MAP = {
+    'Comprar': 'buy',
+    'Hacer fila': 'queue',
+    'Recoger': 'pickup',
+    'Otro': 'deliver',
+  };
+
   const handleRequestFavor = async () => {
     setFavorLoading(true);
     setFavorError(null);
@@ -22,15 +30,14 @@ export default function ServicesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No has iniciado sesión');
 
+      const description = favorDescription || 'Comprar leche y pan';
       const { error } = await supabase
         .from('favors')
         .insert({
-          passenger_id: user.id,
-          favor_type: favorType,
-          description: favorDescription || 'Comprar leche y pan',
+          rider_id: user.id,
+          favor_type: FAVOR_TYPE_MAP[favorType] || 'buy',
+          description: `${description}\n\nDónde es: Éxito Buenaventura · Calle 7\nDónde entregarlo: Calle 6 #3-24, Comuna 4`,
           max_budget: favorBudget,
-          pickup_address: 'Éxito Buenaventura · Calle 7',
-          dropoff_address: 'Calle 6 #3-24, Comuna 4',
           service_fee: 7900,
         });
 
