@@ -20,6 +20,7 @@ export default function HomePage() {
   const [tripProg, setTripProg] = useState(0);
   const [tripId, setTripId] = useState(null);
   const [tripPin, setTripPin] = useState(null);
+  const [matchedDriverId, setMatchedDriverId] = useState(null);
   const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
   const [pickupLoc, setPickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
   const [pickupAddress, setPickupAddress] = useState('Terminal Marítimo');
@@ -123,6 +124,7 @@ export default function HomePage() {
         console.log('Update de viaje:', payload.new);
         const updatedTrip = payload.new;
         if (updatedTrip.status === 'matched') {
+          setMatchedDriverId(updatedTrip.driver_id);
           setStep('matched');
         } else if (updatedTrip.status === 'in_progress') {
           setStep('trip');
@@ -131,6 +133,7 @@ export default function HomePage() {
         } else if (updatedTrip.status === 'cancelled') {
           setStep('home');
           setTripId(null);
+          setMatchedDriverId(null);
         }
       })
       .subscribe((status, err) => {
@@ -141,6 +144,28 @@ export default function HomePage() {
       supabase.removeChannel(channel);
     };
   }, [tripId]);
+
+  // Sigue la posición real del conductor (driver_locations, la actualiza la
+  // app de conductor por geolocalización) mientras va en camino o en viaje.
+  useEffect(() => {
+    if (!matchedDriverId || (step !== 'matched' && step !== 'trip')) return;
+
+    supabase.from('driver_locations').select('location').eq('driver_id', matchedDriverId).single()
+      .then(({ data }) => {
+        const coords = data?.location?.coordinates;
+        if (coords) setDriverLoc([coords[1], coords[0]]);
+      });
+
+    const channel = supabase
+      .channel(`public:driver_locations:driver_id=eq.${matchedDriverId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations', filter: `driver_id=eq.${matchedDriverId}` }, (payload) => {
+        const coords = payload.new?.location?.coordinates;
+        if (coords) setDriverLoc([coords[1], coords[0]]);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [matchedDriverId, step]);
 
   // Simulador visual de progreso para UI. Cuando no hay tripId real (modo
   // demo: se pidió un taxi pero no había conductores en línea para aceptar),
@@ -240,6 +265,7 @@ export default function HomePage() {
       const { error } = await supabase.from('trips').update({ status: 'cancelled' }).eq('id', tripId);
       if (error) throw error;
       setTripId(null);
+      setMatchedDriverId(null);
       setStep('home');
     } catch (err) {
       console.error("Error al cancelar:", err);
