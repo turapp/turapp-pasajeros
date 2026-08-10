@@ -21,7 +21,42 @@ export default function HomePage() {
   const [tripId, setTripId] = useState(null);
   const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
   const [pickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
-  const [dropoffLoc] = useState([3.8772, -77.0200]);
+  const [pickupAddress] = useState('Terminal Marítimo');
+  const [dropoffLoc, setDropoffLoc] = useState([3.8772, -77.0200]);
+  const [dropoffAddress, setDropoffAddress] = useState('Centro');
+
+  // Búsqueda real de destino (Nominatim/OpenStreetMap vía /api/geocode)
+  const [destinationQuery, setDestinationQuery] = useState('');
+  const [destinationResults, setDestinationResults] = useState([]);
+  const [destinationSearching, setDestinationSearching] = useState(false);
+
+  useEffect(() => {
+    if (destinationQuery.trim().length < 3) {
+      setDestinationResults([]);
+      return;
+    }
+    setDestinationSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(destinationQuery)}`);
+        const data = await res.json();
+        setDestinationResults(data);
+      } catch {
+        setDestinationResults([]);
+      } finally {
+        setDestinationSearching(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [destinationQuery]);
+
+  const handleSelectDestination = (result) => {
+    setDropoffLoc([result.lat, result.lon]);
+    setDropoffAddress(result.display_name.split(',').slice(0, 2).join(',').trim());
+    setDestinationQuery('');
+    setDestinationResults([]);
+    setStep('select');
+  };
 
   // Tarifa de taxi con piso legal (Decreto 0048 de 2026, Buenaventura) sobre la
   // distancia estimada del viaje. "Particular" no está regulado por el decreto
@@ -127,8 +162,8 @@ export default function HomePage() {
           pickup_lon: pickupLoc[1],
           dropoff_lat: dropoffLoc[0],
           dropoff_lon: dropoffLoc[1],
-          pickup_address: 'Terminal Marítimo',
-          dropoff_address: 'Centro',
+          pickup_address: pickupAddress,
+          dropoff_address: dropoffAddress,
           category: selectedVehicle,
           payment_method: paymentMethod,
         },
@@ -352,44 +387,64 @@ export default function HomePage() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
                   <div style={{ font: '400 12px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '4px' }}>Pickup</div>
-                  <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Terminal Marítimo</div>
+                  <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pickupAddress}</div>
                 </div>
                 <div>
                   <div style={{ font: '400 12px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '4px' }}>Destination</div>
-                  <div style={{ font: '400 16px Manrope,sans-serif', color: 'var(--mu)', borderLeft: '2px solid var(--jade)', paddingLeft: '4px' }}>Where to?</div>
+                  <input
+                    autoFocus
+                    value={destinationQuery}
+                    onChange={(e) => setDestinationQuery(e.target.value)}
+                    placeholder="¿A dónde vas?"
+                    style={{ width: '100%', font: '400 16px Manrope,sans-serif', color: 'var(--tx)', borderLeft: '2px solid var(--jade)', paddingLeft: '4px', background: 'none', border: 'none', borderLeftWidth: '2px', borderLeftColor: 'var(--jade)', borderLeftStyle: 'solid', outline: 'none' }}
+                  />
                 </div>
               </div>
             </div>
           </div>
-          
-          <div className="tr-sb" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-            <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '16px' }}>Selecciona un destino</div>
-            
-            <button style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '12px 0', borderBottom: '1px solid var(--sf)' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--tx)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              </div>
-              <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)' }}>Lugares guardados</div>
-            </button>
 
-            {shortcuts.map((a, idx) => (
-              <button key={idx} onClick={() => setStep('select')} style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '16px 0', textAlign: 'left', borderBottom: '1px solid var(--sf)' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div className="tr-sb" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+            {destinationQuery.trim().length >= 3 ? (
+              <>
+                <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '16px' }}>
+                  {destinationSearching ? 'Buscando...' : `Resultados para "${destinationQuery}"`}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)' }}>{a.name}</div>
-                  <div style={{ font: '400 14px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>11 mi · {a.addr}</div>
-                </div>
-              </button>
-            ))}
-            
-            <button style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '16px 0', borderTop: '1px solid var(--sf)' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              </div>
-              <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)' }}>Buscar en otra ciudad</div>
-            </button>
+                {!destinationSearching && destinationResults.length === 0 && (
+                  <div style={{ font: '500 14px Manrope,sans-serif', color: 'var(--mu)' }}>No encontramos nada. Prueba con otro nombre.</div>
+                )}
+                {destinationResults.map((r, idx) => (
+                  <button key={idx} onClick={() => handleSelectDestination(r)} style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 0', textAlign: 'left', borderBottom: '1px solid var(--sf)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/></svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, font: '500 14px/1.4 Manrope,sans-serif', color: 'var(--tx)' }}>{r.display_name}</div>
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '16px' }}>Selecciona un destino</div>
+
+                <button style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '12px 0', borderBottom: '1px solid var(--sf)' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--tx)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  </div>
+                  <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)' }}>Lugares guardados</div>
+                </button>
+
+                {shortcuts.map((a, idx) => (
+                  <button key={idx} onClick={() => { setDropoffAddress(a.name); setStep('select'); }} style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '16px 0', textAlign: 'left', borderBottom: '1px solid var(--sf)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)' }}>{a.name}</div>
+                      <div style={{ font: '400 14px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.addr}</div>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -618,7 +673,7 @@ export default function HomePage() {
               <div style={{ height: '100%', borderRadius: '3px', background: 'var(--jade)', width: `${tripProg}%`, transition: 'width 1s linear' }}></div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '7px', font: '500 11px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}>
-              <div>Muelle El Piñal</div><div>Terminal Marítimo</div>
+              <div>{pickupAddress}</div><div>{dropoffAddress}</div>
             </div>
           </div>
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', padding: '16px 18px 24px' }}>
