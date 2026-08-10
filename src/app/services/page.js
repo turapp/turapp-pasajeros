@@ -27,6 +27,96 @@ export default function ServicesPage() {
     'Otro': 'deliver',
   };
 
+  const PACKAGE_TYPE_MAP = { 'Documentos': 'documents', 'Comida': 'food', 'Llaves y objetos': 'keys_items', 'Compra en tienda': 'store_purchase' };
+  const PACKAGE_SIZE_MAP = {
+    'Sobre': { code: 'envelope', price: 6200 },
+    'Caja pequeña': { code: 'small_box', price: 8300 },
+    'Caja grande': { code: 'large_box', price: 14900 },
+  };
+  const [packageType, setPackageType] = useState('Documentos');
+  const [packageSize, setPackageSize] = useState('Sobre');
+  const [recipientName, setRecipientName] = useState('Luisa Rentería');
+  const [recipientPhone, setRecipientPhone] = useState('+57 315 448 2201');
+  const [recipientAddress, setRecipientAddress] = useState('Calle 2 #8-15, Bellavista');
+  const [packageLoading, setPackageLoading] = useState(false);
+  const [packageError, setPackageError] = useState(null);
+
+  const scheduleDays = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return { date: d, dow: d.toLocaleDateString('es-CO', { weekday: 'short' }).replace('.', '').toUpperCase(), num: d.getDate() };
+  });
+  const [scheduledDayIndex, setScheduledDayIndex] = useState(0);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleError, setScheduleError] = useState(null);
+
+  const handleConfirmSchedule = async () => {
+    setScheduleLoading(true);
+    setScheduleError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Debes iniciar sesión');
+
+      const scheduledFor = new Date(scheduleDays[scheduledDayIndex].date);
+      scheduledFor.setHours(6, 30, 0, 0);
+
+      // No pasa por assign-driver: es una reserva a futuro, no se busca conductor
+      // todavía. La ventana de confirmación (30 min antes) queda pendiente de un
+      // job programado que aún no existe.
+      const { error } = await supabase.from('trips').insert({
+        rider_id: user.id,
+        category: 'taxi',
+        status: 'requested',
+        scheduled_for: scheduledFor.toISOString(),
+        pickup_location: 'SRID=4326;POINT(-77.0267 4.8829)',
+        pickup_address: 'Terminal Marítimo',
+        dropoff_location: 'SRID=4326;POINT(-77.0200 4.8800)',
+        dropoff_address: 'Centro',
+        fare_estimated: 19700, // TurConfort — placeholder hasta tener distancia real
+        payment_method: 'cash',
+      });
+
+      if (error) throw error;
+
+      alert(`Reserva confirmada para el ${scheduledFor.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })} a las 6:30 a.m. Te confirmamos conductor 30 minutos antes.`);
+      setStep('services');
+    } catch (err) {
+      setScheduleError(err.message || 'No se pudo confirmar la reserva');
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const handleRequestPackage = async () => {
+    setPackageLoading(true);
+    setPackageError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No has iniciado sesión');
+
+      const sizeInfo = PACKAGE_SIZE_MAP[packageSize];
+      const { error } = await supabase.from('packages').insert({
+        rider_id: user.id,
+        package_type: PACKAGE_TYPE_MAP[packageType] || 'documents',
+        size: sizeInfo.code,
+        price: sizeInfo.price,
+        pickup_address: 'Ubicación actual del remitente',
+        dropoff_address: recipientAddress,
+        recipient_name: recipientName,
+        recipient_phone: recipientPhone,
+      });
+
+      if (error) throw error;
+
+      alert('¡Buscando repartidor para tu paquete!');
+      router.push('/home');
+    } catch (err) {
+      setPackageError(err.message || 'Error al enviar el paquete');
+    } finally {
+      setPackageLoading(false);
+    }
+  };
+
   const handleRequestFavor = async () => {
     setFavorLoading(true);
     setFavorError(null);
@@ -237,12 +327,12 @@ export default function ServicesPage() {
           <div style={{ font: '700 14px Manrope,sans-serif', marginBottom: '10px' }}>¿Qué vas a enviar?</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px', marginBottom: '22px' }}>
             {[
-              { name: 'Documentos', sub: 'Papeles, sobres sellados', glyph: '📄', active: true },
-              { name: 'Comida', sub: 'Sellada, sin bebidas', glyph: '🍽️', active: false },
-              { name: 'Llaves y objetos', sub: 'Menos de 1 kg', glyph: '🔑', active: false },
-              { name: 'Compra en tienda', sub: 'Pagamos y entregamos', glyph: '🛍️', active: false }
+              { name: 'Documentos', sub: 'Papeles, sobres sellados', glyph: '📄' },
+              { name: 'Comida', sub: 'Sellada, sin bebidas', glyph: '🍽️' },
+              { name: 'Llaves y objetos', sub: 'Menos de 1 kg', glyph: '🔑' },
+              { name: 'Compra en tienda', sub: 'Pagamos y entregamos', glyph: '🛍️' }
             ].map((pk, i) => (
-              <button key={i} style={{ borderRadius: '14px', background: 'var(--sf)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', border: pk.active ? '2px solid var(--tx)' : '2px solid transparent' }}>
+              <button key={i} onClick={() => setPackageType(pk.name)} style={{ borderRadius: '14px', background: 'var(--sf)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', border: packageType === pk.name ? '2px solid var(--tx)' : '2px solid transparent' }}>
                 <div style={{ fontSize: '24px', flex: 'none' }}>{pk.glyph}</div>
                 <div style={{ textAlign: 'left', minWidth: 0 }}>
                   <div style={{ font: '700 13.5px Manrope,sans-serif' }}>{pk.name}</div>
@@ -251,36 +341,48 @@ export default function ServicesPage() {
               </button>
             ))}
           </div>
-          
+
           <div style={{ font: '700 14px Manrope,sans-serif', marginBottom: '10px' }}>¿Qué tan grande es?</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '22px' }}>
             {[
-              { name: 'Sobre', sub: 'Documentos, llaves', price: '$6.200', box: '18px', active: true },
-              { name: 'Caja pequeña', sub: 'Hasta 5 kg', price: '$8.300', box: '28px', active: false },
-              { name: 'Caja grande', sub: 'Hasta 20 kg', price: '$14.900', box: '40px', active: false }
+              { name: 'Sobre', sub: 'Documentos, llaves', box: '18px' },
+              { name: 'Caja pequeña', sub: 'Hasta 5 kg', box: '28px' },
+              { name: 'Caja grande', sub: 'Hasta 20 kg', box: '40px' }
             ].map((p, i) => (
-              <button key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '14px', background: 'var(--sf)', border: p.active ? '2px solid var(--tx)' : '2px solid transparent' }}>
+              <button key={i} onClick={() => setPackageSize(p.name)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '14px', background: 'var(--sf)', border: packageSize === p.name ? '2px solid var(--tx)' : '2px solid transparent' }}>
                 <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ width: p.box, height: p.box, borderRadius: '4px', background: 'var(--tx)', opacity: .85, flex: 'none' }}></div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}><div style={{ font: '700 14.5px Manrope,sans-serif' }}>{p.name}</div><div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)' }}>{p.sub}</div></div>
-                <div style={{ font: "700 14px 'IBM Plex Mono',monospace" }}>{p.price}</div>
+                <div style={{ font: "700 14px 'IBM Plex Mono',monospace" }}>${PACKAGE_SIZE_MAP[p.name].price.toLocaleString('es-CO')}</div>
               </button>
             ))}
           </div>
-          
+
           <div style={{ font: '700 14px Manrope,sans-serif', marginBottom: '10px' }}>¿Quién recibe?</div>
           <div style={{ borderRadius: '13px', background: 'var(--sf)', overflow: 'hidden', marginBottom: '13px' }}>
-            <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--bd2)' }}><div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Nombre</div><div style={{ font: '600 14.5px Manrope,sans-serif' }}>Luisa Rentería</div></div>
-            <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--bd2)' }}><div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Celular</div><div style={{ font: "600 14.5px 'IBM Plex Mono',monospace" }}>+57 315 448 2201</div></div>
-            <div style={{ padding: '13px 16px' }}><div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Dirección de entrega</div><div style={{ font: '600 14.5px Manrope,sans-serif' }}>Calle 2 #8-15, Bellavista</div></div>
+            <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--bd2)' }}>
+              <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Nombre</div>
+              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
+            </div>
+            <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--bd2)' }}>
+              <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Celular</div>
+              <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: "600 14.5px 'IBM Plex Mono',monospace", color: 'var(--tx)' }} />
+            </div>
+            <div style={{ padding: '13px 16px' }}>
+              <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Dirección de entrega</div>
+              <input value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value)} style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
+            </div>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '13px 15px', borderRadius: '12px', background: 'var(--sf)', marginBottom: '20px' }}>
             <svg width="17" height="17" viewBox="0 0 16 16" fill="none" style={{ flex: 'none', marginTop: '1px' }}><circle cx="8" cy="8" r="6.4" stroke="var(--mu)" strokeWidth="1.5"></circle><path d="M8 4.8v4.4" stroke="var(--mu)" strokeWidth="1.5" strokeLinecap="round"></path><circle cx="8" cy="11.4" r=".9" fill="var(--mu)"></circle></svg>
             <div style={{ font: '500 11.5px/1.45 Manrope,sans-serif', color: 'var(--mu)' }}>El conductor puede rechazar el paquete si el contenido no coincide o excede el tamaño.</div>
           </div>
-          <button onClick={() => router.push('/home')} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%' }}>Buscar repartidor</button>
+          {packageError && <div style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '12px', textAlign: 'center' }}>{packageError}</div>}
+          <button onClick={handleRequestPackage} disabled={packageLoading} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', opacity: packageLoading ? 0.6 : 1 }}>
+            {packageLoading ? 'Enviando...' : `Buscar repartidor · $${PACKAGE_SIZE_MAP[packageSize].price.toLocaleString('es-CO')}`}
+          </button>
         </div>
       )}
 
@@ -296,14 +398,8 @@ export default function ServicesPage() {
             <div style={{ font: '500 13px/1.5 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '18px' }}>Programa hasta 30 días antes. Confirmamos conductor 30 minutos antes.</div>
             
             <div className="tr-sb" style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '14px', paddingBottom: '2px' }}>
-              {[
-                { dow: 'LUN', num: '4', active: false },
-                { dow: 'MAR', num: '5', active: true },
-                { dow: 'MIÉ', num: '6', active: false },
-                { dow: 'JUE', num: '7', active: false },
-                { dow: 'VIE', num: '8', active: false }
-              ].map((d, i) => (
-                <button key={i} style={{ width: '56px', height: '64px', borderRadius: '13px', background: 'var(--sf)', border: d.active ? '2px solid var(--tx)' : '2px solid transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              {scheduleDays.map((d, i) => (
+                <button key={i} onClick={() => setScheduledDayIndex(i)} style={{ width: '56px', height: '64px', borderRadius: '13px', background: 'var(--sf)', border: scheduledDayIndex === i ? '2px solid var(--tx)' : '2px solid transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                   <div style={{ font: '600 10px Manrope,sans-serif', color: 'var(--mu)', letterSpacing: '.08em' }}>{d.dow}</div>
                   <div style={{ font: '800 19px/1 Manrope,sans-serif', marginTop: '4px' }}>{d.num}</div>
                 </button>
@@ -330,7 +426,10 @@ export default function ServicesPage() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flex: 'none' }}><path d="M4 8.4 6.8 11 12 5" stroke="var(--jade)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
               <div style={{ font: '600 11.5px/1.4 Manrope,sans-serif', color: 'var(--jade)' }}>Precio fijo. Si el conductor se demora, el viaje es gratis.</div>
             </div>
-            <button onClick={() => setStep('services')} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%' }}>Confirmar reserva</button>
+            {scheduleError && <div style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '12px', textAlign: 'center' }}>{scheduleError}</div>}
+            <button onClick={handleConfirmSchedule} disabled={scheduleLoading} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', opacity: scheduleLoading ? 0.6 : 1 }}>
+              {scheduleLoading ? 'Confirmando...' : 'Confirmar reserva'}
+            </button>
           </div>
         </div>
       )}
