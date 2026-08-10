@@ -68,9 +68,9 @@ export default function ServicesPage() {
         category: 'taxi',
         status: 'requested',
         scheduled_for: scheduledFor.toISOString(),
-        pickup_location: 'SRID=4326;POINT(-77.0267 4.8829)',
+        pickup_location: 'SRID=4326;POINT(-77.0267 3.8801)',
         pickup_address: 'Terminal Marítimo',
-        dropoff_location: 'SRID=4326;POINT(-77.0200 4.8800)',
+        dropoff_location: 'SRID=4326;POINT(-77.0200 3.8772)',
         dropoff_address: 'Centro',
         fare_estimated: 19700, // TurConfort — placeholder hasta tener distancia real
         payment_method: 'cash',

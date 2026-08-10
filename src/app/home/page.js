@@ -16,9 +16,9 @@ export default function HomePage() {
   const [pickupProg, setPickupProg] = useState(0);
   const [tripProg, setTripProg] = useState(0);
   const [tripId, setTripId] = useState(null);
-  const [driverLoc, setDriverLoc] = useState([4.8850, -77.0250]);
-  const [pickupLoc] = useState([4.8829, -77.0267]);
-  const [dropoffLoc] = useState([4.8800, -77.0200]);
+  const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
+  const [pickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
+  const [dropoffLoc] = useState([3.8772, -77.0200]);
 
   // Tarifa de taxi con piso legal (Decreto 0048 de 2026, Buenaventura) sobre la
   // distancia estimada del viaje. "Particular" no está regulado por el decreto

@@ -13,8 +13,8 @@ function ChangeView({ center, zoom }) {
   return null;
 }
 
-export default function Map({ center = [4.8829, -77.0267], zoom = 14, markers = [], className = '' }) {
-  // Buenaventura default center [4.8829, -77.0267]
+export default function Map({ center = [3.8801, -77.0267], zoom = 14, markers = [], className = '' }) {
+  // Buenaventura default center [3.8801, -77.0267] (antes tenía 4.88 — 111 km al norte de la ciudad real)
   return (
     <div style={{ width: '100%', height: '100%' }} className={className}>
       <MapContainer center={center} zoom={zoom} scrollWheelZoom={false} style={{ width: '100%', height: '100%' }}>
