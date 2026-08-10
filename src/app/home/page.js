@@ -19,6 +19,7 @@ export default function HomePage() {
   const [pickupProg, setPickupProg] = useState(0);
   const [tripProg, setTripProg] = useState(0);
   const [tripId, setTripId] = useState(null);
+  const [tripPin, setTripPin] = useState(null);
   const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
   const [pickupLoc, setPickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
   const [pickupAddress, setPickupAddress] = useState('Terminal Marítimo');
@@ -121,7 +122,7 @@ export default function HomePage() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, (payload) => {
         console.log('Update de viaje:', payload.new);
         const updatedTrip = payload.new;
-        if (updatedTrip.status === 'accepted') {
+        if (updatedTrip.status === 'matched') {
           setStep('matched');
         } else if (updatedTrip.status === 'in_progress') {
           setStep('trip');
@@ -213,6 +214,7 @@ export default function HomePage() {
       }
 
       setTripId(data.trip_id);
+      setTripPin(data.pin_code);
 
     } catch (err) {
       // Sin conductores en línea todavía (app de conductor en construcción):
@@ -745,7 +747,7 @@ export default function HomePage() {
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '11px', margin: '0 18px 14px', padding: '12px 14px', borderRadius: '12px', background: 'var(--jadeS)' }}>
-              <div style={{ font: "600 12px 'IBM Plex Mono',monospace", color: 'var(--jade)', letterSpacing: '.1em', flex: 'none' }}>PIN 4172</div>
+              <div style={{ font: "600 12px 'IBM Plex Mono',monospace", color: 'var(--jade)', letterSpacing: '.1em', flex: 'none' }}>PIN {tripPin || '····'}</div>
               <div style={{ flex: 1, font: '500 11.5px/1.4 Manrope,sans-serif', color: 'var(--jade)', opacity: .9 }}>Dale este PIN al conductor al subirte para tu seguridad.</div>
             </div>
             <div style={{ display: 'flex', gap: '9px', padding: '0 18px' }}>
