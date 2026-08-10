@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '../../lib/supabaseClient';
 import BottomNav from '../../components/BottomNav';
+import { taxiEstimatedFare, haversineKm, CARRERA_MINIMA } from '../../lib/pricing';
 
 const Map = dynamic(() => import('../../components/Map'), { ssr: false, loading: () => <div style={{ background: '#eee', height: '100%' }} /> });
 
@@ -18,6 +19,18 @@ export default function HomePage() {
   const [driverLoc, setDriverLoc] = useState([4.8850, -77.0250]);
   const [pickupLoc] = useState([4.8829, -77.0267]);
   const [dropoffLoc] = useState([4.8800, -77.0200]);
+
+  // Tarifa de taxi con piso legal (Decreto 0048 de 2026, Buenaventura) sobre la
+  // distancia estimada del viaje. "Particular" no está regulado por el decreto
+  // (placa blanca, precio negociable), así que arranca un poco por debajo y se
+  // ajusta con los botones +/-.
+  const distanceKm = haversineKm(pickupLoc, dropoffLoc);
+  const taxiFare = taxiEstimatedFare(distanceKm);
+  const [particularOffer, setParticularOffer] = useState(null);
+  const particularBase = Math.max(CARRERA_MINIMA, taxiFare - 3000);
+  const particularFare = particularOffer ?? particularBase;
+  const [selectedVehicle, setSelectedVehicle] = useState(null); // 'taxi' | 'particular'
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'nequi' | 'card'
 
   // Escuchar actualizaciones del viaje real en Supabase
   useEffect(() => {
@@ -75,6 +88,7 @@ export default function HomePage() {
   ];
 
   const handleRequestTrip = async () => {
+    if (!selectedVehicle) return;
     setStep('searching');
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -95,8 +109,8 @@ export default function HomePage() {
           dropoff_lon: dropoffLoc[1],
           pickup_address: 'Terminal Marítimo',
           dropoff_address: 'Centro',
-          category: 'taxi', // Puede ser dinámico según lo seleccionado
-          payment_method: 'cash',
+          category: selectedVehicle,
+          payment_method: paymentMethod,
         },
       });
 
@@ -382,7 +396,7 @@ export default function HomePage() {
             <div className="tr-sb" style={{ flex: 1, overflowY: 'auto', padding: '0 16px', minHeight: 0 }}>
               
               {/* Taxi */}
-              <button style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--sf)', textAlign: 'left' }}>
+              <button onClick={() => setSelectedVehicle('taxi')} style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '16px', margin: '8px 0', borderRadius: '16px', border: selectedVehicle === 'taxi' ? '2px solid var(--tx)' : '2px solid transparent', background: selectedVehicle === 'taxi' ? 'var(--sf)' : 'transparent', textAlign: 'left', transition: 'all 0.2s ease' }}>
                 <img src="/images/car.png" style={{ width: '64px', height: '64px', objectFit: 'contain', flex: 'none', marginRight: '12px' }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -391,13 +405,13 @@ export default function HomePage() {
                     <div style={{ font: '600 12px Manrope,sans-serif' }}>4</div>
                   </div>
                   <div style={{ font: '400 13px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>en 5 min • 10:18</div>
-                  <div style={{ font: '400 13px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>Rápido y confiable</div>
+                  <div style={{ font: '400 13px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>Rápido y confiable · taxímetro Decreto 0048/2026</div>
                 </div>
-                <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)' }}>$23.800</div>
+                <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)' }}>${taxiFare.toLocaleString('es-CO')}</div>
               </button>
 
               {/* Particular */}
-              <div style={{ width: '100%', padding: '16px 0', borderBottom: '1px solid var(--sf)', textAlign: 'left' }}>
+              <div onClick={() => setSelectedVehicle('particular')} style={{ width: '100%', padding: '16px', margin: '8px 0', borderRadius: '16px', border: selectedVehicle === 'particular' ? '2px solid var(--tx)' : '2px solid transparent', background: selectedVehicle === 'particular' ? 'var(--sf)' : 'transparent', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                   <img src="/images/car.png" style={{ width: '64px', height: '64px', objectFit: 'contain', flex: 'none', marginRight: '12px' }} />
                   <div style={{ flex: 1 }}>
@@ -409,25 +423,31 @@ export default function HomePage() {
                       <div style={{ background: 'var(--jadeS)', color: 'var(--jade)', padding: '4px 8px', borderRadius: '4px', font: '600 12px Manrope,sans-serif' }}>Negociable</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '12px' }}>
-                      <button style={{ width: '48px', height: '32px', borderRadius: '16px', border: '1px solid #e0e0e0', font: '600 14px Manrope,sans-serif' }}>-500</button>
-                      <div style={{ font: '700 20px Manrope,sans-serif', color: 'var(--tx)' }}>$20.800</div>
-                      <button style={{ width: '48px', height: '32px', borderRadius: '16px', border: '1px solid #e0e0e0', font: '600 14px Manrope,sans-serif' }}>+500</button>
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedVehicle('particular'); setParticularOffer(p => Math.max(CARRERA_MINIMA, (p ?? particularBase) - 500)); }} style={{ width: '48px', height: '32px', borderRadius: '16px', border: '1px solid #e0e0e0', font: '600 14px Manrope,sans-serif' }}>-500</button>
+                      <div style={{ font: '700 20px Manrope,sans-serif', color: 'var(--tx)' }}>${particularFare.toLocaleString('es-CO')}</div>
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedVehicle('particular'); setParticularOffer(p => (p ?? particularBase) + 500); }} style={{ width: '48px', height: '32px', borderRadius: '16px', border: '1px solid #e0e0e0', font: '600 14px Manrope,sans-serif' }}>+500</button>
                     </div>
                   </div>
                 </div>
               </div>
-              
+
             </div>
-            
+
             <div style={{ padding: '16px', borderTop: '1px solid var(--sf)', flexShrink: 0 }}>
               <button onClick={() => setStep('paywith')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ background: 'var(--inv)', color: 'var(--bg)', font: '800 10px sans-serif', padding: '2px 6px', borderRadius: '4px' }}>VISA</div>
-                  <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--tx)' }}>6724</div>
+                  {paymentMethod === 'cash' ? (
+                    <div style={{ background: 'var(--tx)', color: 'var(--bg)', font: '800 10px sans-serif', padding: '2px 6px', borderRadius: '4px' }}>💵</div>
+                  ) : (
+                    <div style={{ background: 'var(--inv)', color: 'var(--bg)', font: '800 10px sans-serif', padding: '2px 6px', borderRadius: '4px' }}>{paymentMethod === 'nequi' ? 'NQ' : 'VISA'}</div>
+                  )}
+                  <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--tx)' }}>{paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'nequi' ? 'Nequi' : '6724'}</div>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
               </button>
-              <button onClick={handleRequestTrip} style={{ width: '100%', height: '56px', background: 'var(--tx)', color: 'var(--bg)', borderRadius: '12px', font: '700 18px Manrope,sans-serif' }}>Confirmar viaje</button>
+              <button onClick={handleRequestTrip} disabled={!selectedVehicle} style={{ width: '100%', height: '56px', background: selectedVehicle ? 'var(--tx)' : 'var(--sf2)', color: selectedVehicle ? 'var(--bg)' : 'var(--mu)', borderRadius: '12px', font: '700 18px Manrope,sans-serif', transition: 'all 0.2s ease' }}>
+                {selectedVehicle ? `Confirmar viaje · $${(selectedVehicle === 'taxi' ? taxiFare : particularFare).toLocaleString('es-CO')}` : 'Elige un vehículo'}
+              </button>
             </div>
           </div>
         </div>
@@ -447,16 +467,32 @@ export default function HomePage() {
           </div>
           <div style={{ font: '800 20px Manrope,sans-serif', letterSpacing: '-.035em', marginBottom: '16px' }}>Métodos de pago</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <button onClick={() => setStep('select')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
+            <button onClick={() => setPaymentMethod('nequi')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
               <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--inv)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 8.5px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>NQ</div>
               <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Nequi</div><div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>···· 4172 (Diego C.)</div></div>
-              <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-              </div>
+              {paymentMethod === 'nequi' && (
+                <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                </div>
+              )}
             </button>
-            <button onClick={() => setStep('select')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
+            <button onClick={() => setPaymentMethod('cash')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
               <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 14px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>💵</div>
               <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Efectivo</div></div>
+              {paymentMethod === 'cash' && (
+                <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                </div>
+              )}
+            </button>
+            <button onClick={() => setPaymentMethod('card')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
+              <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--inv)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 10px sans-serif', color: 'var(--bg)', flex: 'none' }}>VISA</div>
+              <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Tarjeta</div><div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>···· 6724</div></div>
+              {paymentMethod === 'card' && (
+                <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                </div>
+              )}
             </button>
           </div>
           <button onClick={() => setStep('select')} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', marginTop: '26px' }}>Listo</button>

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import BottomNav from '../../components/BottomNav';
 import { supabase } from '../../lib/supabaseClient';
+import { turaFavorServiceFee } from '../../lib/pricing';
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -14,6 +15,9 @@ export default function ServicesPage() {
   const [favorBudget, setFavorBudget] = useState(20000);
   const [favorLoading, setFavorLoading] = useState(false);
   const [favorError, setFavorError] = useState(null);
+
+  // Piso legal (Carrera Mínima, Decreto 0048/2026) + margen de servicio de Turapp
+  const favorServiceFee = turaFavorServiceFee();
 
   // La tabla favors solo acepta estos 4 valores (CHECK constraint)
   const FAVOR_TYPE_MAP = {
@@ -38,7 +42,7 @@ export default function ServicesPage() {
           favor_type: FAVOR_TYPE_MAP[favorType] || 'buy',
           description: `${description}\n\nDónde es: Éxito Buenaventura · Calle 7\nDónde entregarlo: Calle 6 #3-24, Comuna 4`,
           max_budget: favorBudget,
-          service_fee: 7900,
+          service_fee: favorServiceFee,
         });
 
       if (error) throw error;
@@ -394,10 +398,10 @@ export default function ServicesPage() {
             </div>
             
             <div style={{ borderRadius: '14px', background: 'var(--sf)', padding: '15px 16px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '4px 0', font: '500 13px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}><div>Costo del servicio</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>$7.900</div></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '4px 0', font: '500 13px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}><div>Costo del servicio</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${favorServiceFee.toLocaleString('es-CO')}</div></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '4px 0', font: '500 13px Manrope,sans-serif', color: 'var(--mu)', whiteSpace: 'nowrap' }}><div>Presupuesto</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${favorBudget.toLocaleString('es-CO')}</div></div>
               <div style={{ height: '1px', background: 'var(--bd)', margin: '9px 0' }}></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', font: '800 15.5px Manrope,sans-serif' }}><div>Total</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${(favorBudget + 7900).toLocaleString('es-CO')}</div></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', font: '800 15.5px Manrope,sans-serif' }}><div>Total</div><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${(favorBudget + favorServiceFee).toLocaleString('es-CO')}</div></div>
             </div>
             
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '13px 15px', borderRadius: '12px', background: 'var(--jadeS)', marginBottom: '18px' }}>

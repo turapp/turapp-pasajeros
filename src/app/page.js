@@ -14,6 +14,22 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const handleDevLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: 'user@turapp.co',
+        password: 'Turapp-2048',
+      });
+      if (error) throw error;
+      router.push('/home');
+    } catch (err) {
+      setError(err.message || 'Error al iniciar sesión de prueba');
+      setLoading(false);
+    }
+  };
+
   // Auto-transition splash directly to login
   useEffect(() => {
     if (step === 'splash') {
@@ -161,6 +177,12 @@ export default function Home() {
           <div style={{ textAlign: 'center', marginTop: '32px', font: '500 12px/1.5 Manrope,sans-serif', color: '#999' }}>
             Al continuar, aceptas nuestros <span style={{ color: '#111', textDecoration: 'underline' }}>Términos</span> y <span style={{ color: '#111', textDecoration: 'underline' }}>Privacidad</span>.
           </div>
+
+          {/* DEV ONLY: acceso rápido con la cuenta de prueba mientras no haya SMS/OAuth configurados. Quitar antes de producción. */}
+          <button onClick={handleDevLogin} disabled={loading} style={{ marginTop: '16px', height: '44px', borderRadius: '12px', background: 'none', border: '1px dashed #ccc', color: '#666', font: '700 13px Manrope,sans-serif', width: '100%' }}>
+            {loading ? 'Entrando...' : '🧪 Entrar con cuenta de prueba (dev)'}
+          </button>
+          {error && <div style={{ color: '#d32f2f', fontSize: '13px', marginTop: '12px', textAlign: 'center' }}>{error}</div>}
         </div>
       )}
 

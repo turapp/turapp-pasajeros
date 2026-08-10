@@ -488,6 +488,10 @@ export default function PassengerIntermunicipal() {
       {step === 'confirmed' && reservation && (
         <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', animation: 'trFade .3s ease' }}>
 
+          <button onClick={() => router.push('/home')} style={{ position: 'absolute', top: '56px', right: '20px', width: '36px', height: '36px', borderRadius: '50%', background: '#f4f4f3', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+
           <div style={{ padding: '60px 24px 24px', textAlign: 'center' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#0f8a6d', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -669,6 +673,10 @@ export default function PassengerIntermunicipal() {
       {/* 6. TRAVELING */}
       {step === 'traveling' && reservation && (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#fff', animation: 'trFade .3s ease' }}>
+
+          <button onClick={() => router.push('/home')} style={{ position: 'absolute', top: '60px', right: '16px', zIndex: 10, width: '40px', height: '40px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
 
           <div style={{ position: 'absolute', inset: 0, bottom: '200px', zIndex: 1, background: '#f0f0f0' }}>
              <div style={{ width: '100%', height: '100%', backgroundImage: 'url(https://maps.googleapis.com/maps/api/staticmap?center=4.444,-76.522&zoom=14&size=400x800&sensor=false)', backgroundSize: 'cover', opacity: 0.5 }}></div>
