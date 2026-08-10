@@ -9,10 +9,18 @@ import { useAppContext } from '../../context/AppProvider';
 export default function AccountPage() {
   const router = useRouter();
   const { theme, toggleTheme, lang, changeLang } = useAppContext();
-  const [step, setStep] = useState('account'); // account, support, settings
+  const [step, setStep] = useState('account'); // account, support, settings, payments
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [paymentNotice, setPaymentNotice] = useState(false);
+
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
+  const [addMethodType, setAddMethodType] = useState(null); // null | 'nequi' | 'daviplata' | 'card'
+  const [newMethodPhone, setNewMethodPhone] = useState('');
+  const [savingMethod, setSavingMethod] = useState(false);
+  const [methodError, setMethodError] = useState(null);
+
+  const PAYMENT_TYPE_LABEL = { nequi: 'Nequi', daviplata: 'Daviplata', card: 'Tarjeta' };
 
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
@@ -59,6 +67,65 @@ export default function AccountPage() {
   const openSupport = () => {
     setStep('support');
     loadTickets();
+  };
+
+  const loadPaymentMethods = async () => {
+    setPaymentMethodsLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPaymentMethodsLoading(false); return; }
+    const { data } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+    setPaymentMethods(data || []);
+    setPaymentMethodsLoading(false);
+  };
+
+  const openPayments = () => {
+    setStep('payments');
+    setAddMethodType(null);
+    setMethodError(null);
+    loadPaymentMethods();
+  };
+
+  const handleAddMethod = async () => {
+    if (addMethodType !== 'nequi' && addMethodType !== 'daviplata') return;
+    if (!newMethodPhone.trim()) return;
+    setSavingMethod(true);
+    setMethodError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Debes iniciar sesión.');
+      const { error } = await supabase.from('payment_methods').insert({
+        user_id: user.id,
+        type: addMethodType,
+        label: PAYMENT_TYPE_LABEL[addMethodType],
+        phone_number: newMethodPhone.trim(),
+        is_default: paymentMethods.length === 0,
+      });
+      if (error) throw error;
+      setNewMethodPhone('');
+      setAddMethodType(null);
+      await loadPaymentMethods();
+    } catch (err) {
+      setMethodError(err.message || 'No se pudo guardar el método de pago.');
+    } finally {
+      setSavingMethod(false);
+    }
+  };
+
+  const handleSetDefaultMethod = async (id) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from('payment_methods').update({ is_default: false }).eq('user_id', user.id);
+    await supabase.from('payment_methods').update({ is_default: true }).eq('id', id);
+    loadPaymentMethods();
+  };
+
+  const handleDeleteMethod = async (id) => {
+    await supabase.from('payment_methods').delete().eq('id', id);
+    loadPaymentMethods();
   };
 
   const handleCreateTicket = async () => {
@@ -122,32 +189,13 @@ export default function AccountPage() {
           
           {/* Payment Methods (Wallet Style) */}
           <div style={{ font: '800 18px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '16px', color: 'var(--tx)' }}>Pago</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
-            <div style={{ background: 'var(--inv)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: 'var(--sh)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ width: '44px', height: '30px', background: '#fff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ font: '800 14px sans-serif', color: '#1a1f71', fontStyle: 'italic' }}>VISA</div>
-                </div>
-                <div>
-                  <div style={{ font: '600 15px Manrope,sans-serif', color: '#fff' }}>•••• 1234</div>
-                  <div style={{ font: '500 12px Manrope,sans-serif', color: '#aaa' }}>Predeterminado</div>
-                </div>
-              </div>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <button onClick={openPayments} style={{ width: '100%', background: 'var(--sf)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', boxShadow: 'var(--sh2)', cursor: 'pointer', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ width: '44px', height: '30px', background: 'var(--sf2)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 12px Manrope,sans-serif' }}>💵</div>
+              <div style={{ font: '700 15px Manrope,sans-serif', color: 'var(--tx)' }}>Métodos de pago</div>
             </div>
-            
-            <button onClick={() => setPaymentNotice(true)} style={{ background: 'var(--sf)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', border: 'none', boxShadow: 'var(--sh2)', cursor: 'pointer' }}>
-              <div style={{ width: '44px', height: '30px', background: 'var(--sf2)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-              </div>
-              <div style={{ font: '700 15px Manrope,sans-serif', color: 'var(--tx)' }}>Añadir método de pago</div>
-            </button>
-            {paymentNotice && (
-              <div style={{ background: 'var(--sf)', borderRadius: '14px', padding: '14px 16px', font: '600 13px/1.5 Manrope,sans-serif', color: 'var(--mu)' }}>
-                Estamos integrando pasarela de pago (Nequi / tarjeta). Por ahora paga en efectivo o Nequi directo al conductor.
-              </div>
-            )}
-          </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
 
           {/* Options List */}
           <div style={{ font: '800 18px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '16px', color: 'var(--tx)' }}>Cuenta</div>
@@ -271,6 +319,84 @@ export default function AccountPage() {
           <button onClick={handleLogout} style={{ width: '100%', height: '56px', borderRadius: '16px', background: 'var(--redS)', color: 'var(--red)', font: '800 16px Manrope,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
             Cerrar sesión
           </button>
+        </div>
+      )}
+
+      {step === 'payments' && (
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '40px 24px 100px', background: 'var(--bg)', color: 'var(--tx)', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+            <button onClick={() => setStep('account')} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div style={{ font: '800 22px Manrope,sans-serif', letterSpacing: '-.03em' }}>Métodos de pago</div>
+          </div>
+
+          {paymentMethodsLoading ? (
+            <div style={{ color: 'var(--mu)', font: '600 13px Manrope,sans-serif', marginBottom: '20px' }}>Cargando...</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
+              {/* Efectivo: siempre disponible, es el default implícito si no hay otro marcado */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '14px', background: 'var(--sf)', border: !paymentMethods.some(m => m.is_default) ? '2px solid var(--jade)' : '2px solid transparent' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '16px', flex: 'none' }}>💵</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ font: '700 15px Manrope,sans-serif' }}>Efectivo</div>
+                  <div style={{ font: '500 12px Manrope,sans-serif', color: 'var(--mu)' }}>Siempre disponible</div>
+                </div>
+                {!paymentMethods.some(m => m.is_default) && <div style={{ font: '700 11px Manrope,sans-serif', color: 'var(--jade)' }}>Predeterminado</div>}
+              </div>
+
+              {paymentMethods.map((m) => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px', borderRadius: '14px', background: 'var(--sf)', border: m.is_default ? '2px solid var(--jade)' : '2px solid transparent' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 11px Manrope,sans-serif', flex: 'none' }}>
+                    {m.type === 'card' ? '💳' : m.type === 'nequi' ? 'NQ' : 'DP'}
+                  </div>
+                  <button onClick={() => !m.is_default && handleSetDefaultMethod(m.id)} style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none' }}>
+                    <div style={{ font: '700 15px Manrope,sans-serif' }}>{m.label}</div>
+                    <div style={{ font: "500 12px 'IBM Plex Mono',monospace", color: 'var(--mu)' }}>{m.phone_number ? m.phone_number : m.last4 ? `•••• ${m.last4}` : ''}</div>
+                  </button>
+                  {m.is_default ? (
+                    <div style={{ font: '700 11px Manrope,sans-serif', color: 'var(--jade)', flex: 'none' }}>Predeterminado</div>
+                  ) : (
+                    <button onClick={() => handleDeleteMethod(m.id)} style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', flex: 'none' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mu)" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ font: '800 16px Manrope,sans-serif', marginBottom: '12px' }}>Agregar método</div>
+          <div style={{ display: 'flex', gap: '9px', marginBottom: '18px' }}>
+            {['nequi', 'daviplata', 'card'].map((t) => (
+              <button key={t} onClick={() => { setAddMethodType(t); setMethodError(null); }} style={{ flex: 1, padding: '14px 8px', borderRadius: '14px', background: 'var(--sf)', border: addMethodType === t ? '2px solid var(--tx)' : '2px solid transparent', font: '700 13px Manrope,sans-serif' }}>
+                {t === 'card' ? '💳 Tarjeta' : t === 'nequi' ? 'Nequi' : 'Daviplata'}
+              </button>
+            ))}
+          </div>
+
+          {(addMethodType === 'nequi' || addMethodType === 'daviplata') && (
+            <div style={{ background: 'var(--sf)', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+              <div style={{ font: '600 12px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '8px' }}>Número de celular {PAYMENT_TYPE_LABEL[addMethodType]}</div>
+              <input
+                type="tel"
+                value={newMethodPhone}
+                onChange={(e) => setNewMethodPhone(e.target.value)}
+                placeholder="300 000 0000"
+                style={{ width: '100%', height: '48px', borderRadius: '12px', border: 'none', background: 'var(--bg)', padding: '0 14px', font: "600 15px 'IBM Plex Mono',monospace", color: 'var(--tx)', outline: 'none', marginBottom: '12px' }}
+              />
+              {methodError && <div style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '10px' }}>{methodError}</div>}
+              <button onClick={handleAddMethod} disabled={savingMethod || !newMethodPhone.trim()} style={{ width: '100%', height: '46px', borderRadius: '12px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 14px Manrope,sans-serif', border: 'none', opacity: savingMethod ? 0.6 : 1 }}>
+                {savingMethod ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          )}
+
+          {addMethodType === 'card' && (
+            <div style={{ background: 'var(--sf)', borderRadius: '16px', padding: '16px', font: '600 13px/1.5 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '20px' }}>
+              Aún no hemos conectado una pasarela de pago para tarjetas (Stripe, Wompi, PayU o MercadoPago). Por seguridad, nunca guardamos números de tarjeta directamente — hace falta activar una de esas pasarelas primero. Mientras tanto, usa Efectivo, Nequi o Daviplata.
+            </div>
+          )}
         </div>
       )}
     </>

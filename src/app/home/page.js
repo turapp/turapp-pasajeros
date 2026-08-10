@@ -9,6 +9,9 @@ import { taxiEstimatedFare, haversineKm, CARRERA_MINIMA } from '../../lib/pricin
 
 const Map = dynamic(() => import('../../components/Map'), { ssr: false, loading: () => <div style={{ background: '#eee', height: '100%' }} /> });
 
+const PAYMENT_METHOD_LABEL = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', card: 'Tarjeta' };
+const PAYMENT_METHOD_ICON = { cash: '💵', nequi: 'NQ', daviplata: 'DP', card: 'VISA' };
+
 export default function HomePage() {
   const router = useRouter();
   const [step, setStep] = useState('home'); // home, address, select, paywith, searching, matched, trip, rate
@@ -30,7 +33,24 @@ export default function HomePage() {
   const particularBase = Math.max(CARRERA_MINIMA, taxiFare - 3000);
   const particularFare = particularOffer ?? particularBase;
   const [selectedVehicle, setSelectedVehicle] = useState(null); // 'taxi' | 'particular'
-  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'nequi' | 'card'
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'nequi' | 'daviplata' | 'card'
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
+
+  useEffect(() => {
+    async function loadSavedMethods() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('payment_methods')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      setSavedPaymentMethods(data || []);
+      const def = (data || []).find(m => m.is_default);
+      if (def) setPaymentMethod(def.type);
+    }
+    loadSavedMethods();
+  }, []);
 
   // Escuchar actualizaciones del viaje real en Supabase
   useEffect(() => {
@@ -435,12 +455,10 @@ export default function HomePage() {
             <div style={{ padding: '16px', borderTop: '1px solid var(--sf)', flexShrink: 0 }}>
               <button onClick={() => setStep('paywith')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {paymentMethod === 'cash' ? (
-                    <div style={{ background: 'var(--tx)', color: 'var(--bg)', font: '800 10px sans-serif', padding: '2px 6px', borderRadius: '4px' }}>💵</div>
-                  ) : (
-                    <div style={{ background: 'var(--inv)', color: 'var(--bg)', font: '800 10px sans-serif', padding: '2px 6px', borderRadius: '4px' }}>{paymentMethod === 'nequi' ? 'NQ' : 'VISA'}</div>
-                  )}
-                  <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--tx)' }}>{paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'nequi' ? 'Nequi' : '6724'}</div>
+                  <div style={{ background: paymentMethod === 'cash' ? 'var(--tx)' : 'var(--inv)', color: 'var(--bg)', font: '800 10px sans-serif', padding: '2px 6px', borderRadius: '4px' }}>
+                    {PAYMENT_METHOD_ICON[paymentMethod] || '💵'}
+                  </div>
+                  <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--tx)' }}>{PAYMENT_METHOD_LABEL[paymentMethod] || 'Efectivo'}</div>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
               </button>
@@ -466,15 +484,6 @@ export default function HomePage() {
           </div>
           <div style={{ font: '800 20px Manrope,sans-serif', letterSpacing: '-.035em', marginBottom: '16px' }}>Métodos de pago</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <button onClick={() => setPaymentMethod('nequi')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
-              <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--inv)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 8.5px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>NQ</div>
-              <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Nequi</div><div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>···· 4172 (Diego C.)</div></div>
-              {paymentMethod === 'nequi' && (
-                <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                </div>
-              )}
-            </button>
             <button onClick={() => setPaymentMethod('cash')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
               <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 14px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>💵</div>
               <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Efectivo</div></div>
@@ -484,14 +493,25 @@ export default function HomePage() {
                 </div>
               )}
             </button>
-            <button onClick={() => setPaymentMethod('card')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
-              <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--inv)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 10px sans-serif', color: 'var(--bg)', flex: 'none' }}>VISA</div>
-              <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Tarjeta</div><div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>···· 6724</div></div>
-              {paymentMethod === 'card' && (
-                <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+            {savedPaymentMethods.map((m) => (
+              <button key={m.id} onClick={() => setPaymentMethod(m.type)} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
+                <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--inv)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 8.5px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>{PAYMENT_METHOD_ICON[m.type]}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</div>
+                  {m.phone_number && <div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>{m.phone_number}</div>}
                 </div>
-              )}
+                {paymentMethod === m.type && (
+                  <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+                  </div>
+                )}
+              </button>
+            ))}
+            <button onClick={() => router.push('/account')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left' }}>
+              <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+              <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--mu)' }}>Agregar Nequi, Daviplata o tarjeta</div>
             </button>
           </div>
           <button onClick={() => setStep('select')} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', marginTop: '26px' }}>Listo</button>
