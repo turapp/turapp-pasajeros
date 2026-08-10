@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from '../../lib/supabaseClient';
 import BottomNav from '../../components/BottomNav';
 import { taxiEstimatedFare, haversineKm, CARRERA_MINIMA } from '../../lib/pricing';
+import { staticMapUrl } from '../../lib/maps';
 
 const Map = dynamic(() => import('../../components/Map'), { ssr: false, loading: () => <div style={{ background: '#eee', height: '100%' }} /> });
 
@@ -378,7 +379,7 @@ export default function HomePage() {
         <div style={{ position: 'absolute', inset: 0, animation: 'trFade .3s ease', display: 'flex', flexDirection: 'column' }}>
           <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, background: 'var(--sf)', zIndex: 0 }}>
             {/* Map placeholder */}
-            <div style={{ width: '100%', height: '100%', backgroundImage: 'url(https://maps.googleapis.com/maps/api/staticmap?center=4.444,-76.522&zoom=13&size=400x800&sensor=false)', backgroundSize: 'cover', opacity: 0.3 }}></div>
+            <div style={{ width: '100%', height: '100%', backgroundImage: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 13, size: '400x800' })})`, backgroundSize: 'cover', opacity: 0.3 }}></div>
           </div>
           
           <div style={{ paddingTop: '40px', paddingBottom: '16px', background: 'linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 80%, rgba(255,255,255,0) 100%)', zIndex: 10, display: 'flex', alignItems: 'center', paddingLeft: '16px' }}>

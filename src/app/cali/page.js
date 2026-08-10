@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAppContext } from '../../context/AppProvider';
 import { supabase } from '../../lib/supabaseClient';
 import { caliService } from '../../lib/caliService';
+import { staticMapUrl } from '../../lib/maps';
 
 export default function PassengerIntermunicipal() {
   const router = useRouter();
@@ -543,7 +544,7 @@ export default function PassengerIntermunicipal() {
           </div>
 
           <div style={{ margin: '0 24px 24px', borderRadius: '24px', border: '1px solid #eaeae8', overflow: 'hidden' }}>
-            <div style={{ height: '160px', background: 'url(https://maps.googleapis.com/maps/api/staticmap?center=4.444,-76.522&zoom=15&size=400x160&sensor=false&style=feature:all|element:labels|visibility:off&style=feature:water|color:0xcbd9e2&style=feature:landscape|color:0xecebe6) center/cover' }}>
+            <div style={{ height: '160px', background: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 15, size: '400x160', style: ['feature:all|element:labels|visibility:off', 'feature:water|color:0xcbd9e2', 'feature:landscape|color:0xecebe6'] })}) center/cover` }}>
                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px dashed #0f8a6d', opacity: 0.3, position: 'absolute' }}></div>
                  <div style={{ width: '160px', height: '160px', borderRadius: '50%', border: '2px dashed #0f8a6d', opacity: 0.2, position: 'absolute' }}></div>
@@ -593,7 +594,7 @@ export default function PassengerIntermunicipal() {
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#fff', animation: 'trFade .3s ease' }}>
 
           <div style={{ position: 'absolute', inset: 0, bottom: '400px', zIndex: 1, background: '#f0f0f0' }}>
-             <div style={{ width: '100%', height: '100%', backgroundImage: 'url(https://maps.googleapis.com/maps/api/staticmap?center=4.444,-76.522&zoom=14&size=400x800&sensor=false)', backgroundSize: 'cover', opacity: 0.5 }}></div>
+             <div style={{ width: '100%', height: '100%', backgroundImage: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 14, size: '400x800' })})`, backgroundSize: 'cover', opacity: 0.5 }}></div>
              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2 }} viewBox="0 0 100 100" preserveAspectRatio="none">
                <polyline points="20,80 20,40 60,40 60,10" fill="none" stroke="#111" strokeWidth="2.5" />
                <circle cx="60" cy="10" r="2.5" fill="#0f8a6d" />
@@ -679,7 +680,7 @@ export default function PassengerIntermunicipal() {
           </button>
 
           <div style={{ position: 'absolute', inset: 0, bottom: '200px', zIndex: 1, background: '#f0f0f0' }}>
-             <div style={{ width: '100%', height: '100%', backgroundImage: 'url(https://maps.googleapis.com/maps/api/staticmap?center=4.444,-76.522&zoom=14&size=400x800&sensor=false)', backgroundSize: 'cover', opacity: 0.5 }}></div>
+             <div style={{ width: '100%', height: '100%', backgroundImage: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 14, size: '400x800' })})`, backgroundSize: 'cover', opacity: 0.5 }}></div>
              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2 }} viewBox="0 0 100 100" preserveAspectRatio="none">
                <polyline points="20,80 80,20 80,10" fill="none" stroke="#ccc" strokeWidth="2" strokeDasharray="4 4" />
                <polyline points="20,80 40,60" fill="none" stroke="#111" strokeWidth="3" />
