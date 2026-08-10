@@ -62,6 +62,10 @@ export default function HomePage() {
   useAddressSearch(destinationQuery, setDestinationResults, setDestinationSearching);
 
   const shortAddress = (display_name) => display_name.split(',').slice(0, 2).join(',').trim();
+  const splitAddress = (display_name) => {
+    const parts = display_name.split(',').map(p => p.trim());
+    return { primary: parts[0], secondary: parts.slice(1, 3).join(', ') };
+  };
 
   const handleSelectDestination = (result) => {
     setDropoffLoc([result.lat, result.lon]);
@@ -445,7 +449,10 @@ export default function HomePage() {
                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/></svg>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0, font: '500 14px/1.4 Manrope,sans-serif', color: 'var(--tx)' }}>{r.display_name}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{splitAddress(r.display_name).primary}</div>
+                      <div style={{ font: '400 12.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{splitAddress(r.display_name).secondary}</div>
+                    </div>
                   </button>
                 ))}
               </>
@@ -462,7 +469,10 @@ export default function HomePage() {
                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/></svg>
                     </div>
-                    <div style={{ flex: 1, minWidth: 0, font: '500 14px/1.4 Manrope,sans-serif', color: 'var(--tx)' }}>{r.display_name}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: '600 15px Manrope,sans-serif', color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{splitAddress(r.display_name).primary}</div>
+                      <div style={{ font: '400 12.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{splitAddress(r.display_name).secondary}</div>
+                    </div>
                   </button>
                 ))}
               </>
