@@ -339,6 +339,26 @@ export default function HomePage() {
               </div>
               
               <div style={{ padding: '0 16px', font: '800 21px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '16px', color: 'var(--tx)' }}>Servicios</div>
+              <div className="tr-sb" style={{ display: 'flex', gap: '12px', overflowX: 'auto', padding: '0 16px 24px' }}>
+                <button onClick={() => router.push('/services')} style={{ flex: 'none', width: '82px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '82px', height: '82px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.03)' }}>
+                    <img src="/images/delivery_person.png" alt="" style={{ width: '64px', objectFit: 'contain' }} />
+                  </div>
+                  <div style={{ font: '700 13px/1.2 Manrope,sans-serif', textAlign: 'center', color: 'var(--tx)' }}>Enviar paquete</div>
+                </button>
+                <button onClick={() => router.push('/services')} style={{ flex: 'none', width: '82px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '82px', height: '82px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.03)' }}>
+                    <img src="/images/moto.png" alt="" style={{ width: '64px', objectFit: 'contain' }} />
+                  </div>
+                  <div style={{ font: '700 13px/1.2 Manrope,sans-serif', textAlign: 'center', color: 'var(--tx)' }}>Tura favor</div>
+                </button>
+                <button onClick={() => setStep('select')} style={{ flex: 'none', width: '82px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '82px', height: '82px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 -4px 10px rgba(0,0,0,0.03)' }}>
+                    <img src="/images/clock_car.png" alt="" style={{ width: '64px', objectFit: 'contain' }} />
+                  </div>
+                  <div style={{ font: '700 13px/1.2 Manrope,sans-serif', textAlign: 'center', color: 'var(--tx)' }}>Reserva</div>
+                </button>
+              </div>
             </>
           ) : (
             <>
