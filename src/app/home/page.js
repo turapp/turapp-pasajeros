@@ -20,42 +20,63 @@ export default function HomePage() {
   const [tripProg, setTripProg] = useState(0);
   const [tripId, setTripId] = useState(null);
   const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
-  const [pickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
-  const [pickupAddress] = useState('Terminal Marítimo');
+  const [pickupLoc, setPickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
+  const [pickupAddress, setPickupAddress] = useState('Terminal Marítimo');
   const [dropoffLoc, setDropoffLoc] = useState([3.8772, -77.0200]);
   const [dropoffAddress, setDropoffAddress] = useState('Centro');
 
-  // Búsqueda real de destino (Nominatim/OpenStreetMap vía /api/geocode)
+  // Búsqueda real de direcciones (Nominatim/OpenStreetMap vía /api/geocode),
+  // acotada a Buenaventura. activeField dice cuál de los dos inputs (pickup o
+  // destino) está mostrando resultados en este momento.
+  const [activeField, setActiveField] = useState('destination'); // 'pickup' | 'destination'
+  const [pickupQuery, setPickupQuery] = useState('');
+  const [pickupResults, setPickupResults] = useState([]);
+  const [pickupSearching, setPickupSearching] = useState(false);
   const [destinationQuery, setDestinationQuery] = useState('');
   const [destinationResults, setDestinationResults] = useState([]);
   const [destinationSearching, setDestinationSearching] = useState(false);
 
-  useEffect(() => {
-    if (destinationQuery.trim().length < 3) {
-      setDestinationResults([]);
-      return;
-    }
-    setDestinationSearching(true);
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(destinationQuery)}`);
-        const data = await res.json();
-        setDestinationResults(data);
-      } catch {
-        setDestinationResults([]);
-      } finally {
-        setDestinationSearching(false);
+  function useAddressSearch(query, setResults, setSearching) {
+    useEffect(() => {
+      if (query.trim().length < 2) {
+        setResults([]);
+        return;
       }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [destinationQuery]);
+      setSearching(true);
+      const timer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+          const data = await res.json();
+          setResults(data);
+        } catch {
+          setResults([]);
+        } finally {
+          setSearching(false);
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }, [query]);
+  }
+
+  useAddressSearch(pickupQuery, setPickupResults, setPickupSearching);
+  useAddressSearch(destinationQuery, setDestinationResults, setDestinationSearching);
+
+  const shortAddress = (display_name) => display_name.split(',').slice(0, 2).join(',').trim();
 
   const handleSelectDestination = (result) => {
     setDropoffLoc([result.lat, result.lon]);
-    setDropoffAddress(result.display_name.split(',').slice(0, 2).join(',').trim());
+    setDropoffAddress(shortAddress(result.display_name));
     setDestinationQuery('');
     setDestinationResults([]);
     setStep('select');
+  };
+
+  const handleSelectPickup = (result) => {
+    setPickupLoc([result.lat, result.lon]);
+    setPickupAddress(shortAddress(result.display_name));
+    setPickupQuery('');
+    setPickupResults([]);
+    setActiveField('destination');
   };
 
   // Tarifa de taxi con piso legal (Decreto 0048 de 2026, Buenaventura) sobre la
@@ -387,13 +408,20 @@ export default function HomePage() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
                   <div style={{ font: '400 12px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '4px' }}>Pickup</div>
-                  <div style={{ font: '600 16px Manrope,sans-serif', color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pickupAddress}</div>
+                  <input
+                    value={activeField === 'pickup' ? pickupQuery : pickupAddress}
+                    onFocus={() => { setActiveField('pickup'); setPickupQuery(''); }}
+                    onChange={(e) => setPickupQuery(e.target.value)}
+                    placeholder="¿Dónde te recogemos?"
+                    style={{ width: '100%', font: '600 16px Manrope,sans-serif', color: 'var(--tx)', background: 'none', border: 'none', outline: 'none', padding: 0 }}
+                  />
                 </div>
                 <div>
                   <div style={{ font: '400 12px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '4px' }}>Destination</div>
                   <input
-                    autoFocus
+                    autoFocus={activeField === 'destination'}
                     value={destinationQuery}
+                    onFocus={() => setActiveField('destination')}
                     onChange={(e) => setDestinationQuery(e.target.value)}
                     placeholder="¿A dónde vas?"
                     style={{ width: '100%', font: '400 16px Manrope,sans-serif', color: 'var(--tx)', borderLeft: '2px solid var(--jade)', paddingLeft: '4px', background: 'none', border: 'none', borderLeftWidth: '2px', borderLeftColor: 'var(--jade)', borderLeftStyle: 'solid', outline: 'none' }}
@@ -404,13 +432,30 @@ export default function HomePage() {
           </div>
 
           <div className="tr-sb" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-            {destinationQuery.trim().length >= 3 ? (
+            {activeField === 'pickup' && pickupQuery.trim().length >= 2 ? (
+              <>
+                <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '16px' }}>
+                  {pickupSearching ? 'Buscando...' : `Resultados para "${pickupQuery}"`}
+                </div>
+                {!pickupSearching && pickupResults.length === 0 && (
+                  <div style={{ font: '500 14px Manrope,sans-serif', color: 'var(--mu)' }}>No encontramos nada en Buenaventura. Prueba con otro nombre.</div>
+                )}
+                {pickupResults.map((r, idx) => (
+                  <button key={idx} onClick={() => handleSelectPickup(r)} style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 0', textAlign: 'left', borderBottom: '1px solid var(--sf)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><circle cx="12" cy="10" r="3"/><path d="M12 21s7-6.5 7-11a7 7 0 10-14 0c0 4.5 7 11 7 11z"/></svg>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, font: '500 14px/1.4 Manrope,sans-serif', color: 'var(--tx)' }}>{r.display_name}</div>
+                  </button>
+                ))}
+              </>
+            ) : activeField === 'destination' && destinationQuery.trim().length >= 2 ? (
               <>
                 <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)', marginBottom: '16px' }}>
                   {destinationSearching ? 'Buscando...' : `Resultados para "${destinationQuery}"`}
                 </div>
                 {!destinationSearching && destinationResults.length === 0 && (
-                  <div style={{ font: '500 14px Manrope,sans-serif', color: 'var(--mu)' }}>No encontramos nada. Prueba con otro nombre.</div>
+                  <div style={{ font: '500 14px Manrope,sans-serif', color: 'var(--mu)' }}>No encontramos nada en Buenaventura. Prueba con otro nombre.</div>
                 )}
                 {destinationResults.map((r, idx) => (
                   <button key={idx} onClick={() => handleSelectDestination(r)} style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 0', textAlign: 'left', borderBottom: '1px solid var(--sf)' }}>
