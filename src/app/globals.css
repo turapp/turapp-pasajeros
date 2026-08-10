@@ -23,7 +23,7 @@
 .tr-app{font-family:Manrope,-apple-system,'Helvetica Neue',Helvetica,sans-serif; letter-spacing:-0.01em;}
 .tr-app button{font:inherit; color:inherit; border:0; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform 0.2s cubic-bezier(0.2,0.8,0.2,1), background 0.2s ease, opacity 0.2s ease;}
 .tr-app input{font:inherit; color:inherit; background:none; border:0; outline:none; transition:border-color 0.2s ease;}
-.tr-sb{scrollbar-width:none; -ms-overflow-style:none;}
+.tr-sb{scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
 .tr-sb::-webkit-scrollbar{display:none; width:0; height:0;}
 .tr-app a{color:var(--jade); text-decoration:none;}
 .tr-app a:hover{color:var(--tx);}
@@ -45,14 +45,25 @@
 @media (prefers-reduced-motion:reduce){.tr-app *{animation-duration:.01ms !important;animation-iteration-count:1 !important}}
 
 /* IPHONE SIMULATOR WRAPPER FOR DESKTOP */
+/* html sin overflow/height propios permite el "rubber-band" nativo del
+   documento en móviles reales, que compite con el scroll interno de cada
+   pantalla (.tr-sb) y hace que el gesto de swipe no se reconozca — hay que
+   bloquear el scroll también a nivel de html, no solo en body. */
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
+  height: 100%;
   background-color: #0b0b0c;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #iphone-wrapper {
