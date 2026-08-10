@@ -141,20 +141,31 @@ export default function HomePage() {
     };
   }, [tripId]);
 
-  // Simulador visual de progreso para UI
+  // Simulador visual de progreso para UI. Cuando no hay tripId real (modo
+  // demo: se pidió un taxi pero no había conductores en línea para aceptar),
+  // este mismo timer también hace avanzar los pasos solo, ya que no hay
+  // conductor real actualizando el estado del viaje por realtime.
   useEffect(() => {
     let interval;
     if (step === 'matched') {
       interval = setInterval(() => {
-        setPickupProg(p => (p < 100 ? p + 5 : 100));
+        setPickupProg(p => {
+          const next = p < 100 ? p + 5 : 100;
+          if (next >= 100 && !tripId) setStep('trip');
+          return next;
+        });
       }, 1000);
     } else if (step === 'trip') {
       interval = setInterval(() => {
-        setTripProg(p => (p < 100 ? p + 2 : 100));
+        setTripProg(p => {
+          const next = p < 100 ? p + 2 : 100;
+          if (next >= 100 && !tripId) setStep('rate');
+          return next;
+        });
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, tripId]);
 
   const shortcuts = [
     { name: "Terminal Marítimo", addr: "Cra. 1 #1-50, Comuna 3", glyph: "🏠", iconBg: "var(--sf2)" },
@@ -170,6 +181,8 @@ export default function HomePage() {
   const handleRequestTrip = async () => {
     if (!selectedVehicle) return;
     setStep('searching');
+    setPickupProg(0);
+    setTripProg(0);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -202,6 +215,15 @@ export default function HomePage() {
       setTripId(data.trip_id);
 
     } catch (err) {
+      // Sin conductores en línea todavía (app de conductor en construcción):
+      // en vez de cortar el flujo, se simula la aceptación para poder
+      // probar el resto de las pantallas (matched/trip/rate). tripId queda
+      // null a propósito — así el timer de progreso de arriba sabe que debe
+      // avanzar los pasos solo, en lugar de esperar a un conductor real.
+      if (err.message.includes('No hay conductores disponibles')) {
+        setTimeout(() => setStep('matched'), 2500);
+        return;
+      }
       alert("Error al pedir viaje: " + err.message);
       setStep('home');
     }

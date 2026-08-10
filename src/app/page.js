@@ -258,7 +258,7 @@ export default function Home() {
       )}
 
       {step === 'benefits' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', animation: 'trSlideL .3s ease', background: '#fff' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', animation: 'trSlideL .3s ease', background: '#fff' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 30px' }}>
             <img src="/images/car.png" alt="" style={{ width: '220px', height: '220px', objectFit: 'contain', animation: 'trPop .5s cubic-bezier(.2,.8,.2,1) both' }} />
           </div>
@@ -271,7 +271,7 @@ export default function Home() {
       )}
 
       {step === 'permission' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#fff', animation: 'trFade .3s ease' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#fff', animation: 'trFade .3s ease' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 30px' }}>
             <div style={{ width: '100%', maxWidth: '290px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ borderRadius: '16px', background: '#fff', padding: '16px', display: 'flex', gap: '12px', alignItems: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.06)', opacity: .7, transform: 'scale(.92) translateY(14px)' }}>

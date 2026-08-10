@@ -155,7 +155,7 @@ export default function PassengerIntermunicipal() {
   const bgCard = 'var(--bg)';
 
   return (
-    <div style={{ minHeight: '100vh', background: bgRoot, color: colorRoot, fontFamily: 'Manrope, sans-serif', transition: 'background 0.3s ease' }}>
+    <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', background: bgRoot, color: colorRoot, fontFamily: 'Manrope, sans-serif', transition: 'background 0.3s ease' }}>
 
       {/* 1. LIST OF TRIPS */}
       {step === 'list' && (
@@ -489,7 +489,7 @@ export default function PassengerIntermunicipal() {
 
       {/* 4. CONFIRMED & QR */}
       {step === 'confirmed' && reservation && (
-        <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', animation: 'trFade .3s ease' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', background: '#fff', display: 'flex', flexDirection: 'column', animation: 'trFade .3s ease' }}>
 
           <button onClick={() => router.push('/home')} style={{ position: 'absolute', top: '56px', right: '20px', width: '36px', height: '36px', borderRadius: '50%', background: '#f4f4f3', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -737,7 +737,7 @@ export default function PassengerIntermunicipal() {
 
       {/* 7. FINISHED (Viaje finalizado) */}
       {step === 'finished' && reservation && (
-        <div style={{ minHeight: '100vh', background: '#fff', color: '#111', display: 'flex', flexDirection: 'column', animation: 'trFade .3s ease' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', background: '#fff', color: '#111', display: 'flex', flexDirection: 'column', animation: 'trFade .3s ease' }}>
 
           <div style={{ padding: '60px 24px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ width: '40px', height: '40px' }}></div>
