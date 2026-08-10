@@ -377,7 +377,7 @@ export default function HomePage() {
       {step === 'select' && (
         <div style={{ position: 'absolute', inset: 0, animation: 'trFade .3s ease', display: 'flex', flexDirection: 'column' }}>
           <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, background: 'var(--sf)', zIndex: 0, opacity: 0.6 }}>
-            <Map center={pickupLoc} zoom={15} markers={[{ position: pickupLoc, popup: 'Punto de recogida' }]} />
+            <Map center={pickupLoc} zoom={17} markers={[{ position: pickupLoc, popup: 'Punto de recogida' }]} />
           </div>
           
           <div style={{ paddingTop: '40px', paddingBottom: '16px', background: 'linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0.9) 80%, rgba(255,255,255,0) 100%)', zIndex: 10, display: 'flex', alignItems: 'center', paddingLeft: '16px' }}>
@@ -530,7 +530,7 @@ export default function HomePage() {
           </div>
 
           <div style={{ position: 'absolute', inset: 0, bottom: '130px' }}>
-            <Map center={pickupLoc} zoom={15} markers={[{ position: pickupLoc, popup: 'Origen' }]} />
+            <Map center={pickupLoc} zoom={17} markers={[{ position: pickupLoc, popup: 'Origen' }]} />
           </div>
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '20px 20px 28px', boxShadow: 'var(--sh)', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
@@ -545,7 +545,7 @@ export default function HomePage() {
       {step === 'matched' && (
         <div style={{ position: 'absolute', inset: 0, animation: 'trFade .3s ease' }}>
           <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '474px', overflow: 'hidden', background: '#e0e0e0' }}>
-            <Map center={driverLoc} zoom={15} markers={[{ position: driverLoc, popup: 'Conductor' }, { position: pickupLoc, popup: 'Tú' }]} />
+            <Map center={driverLoc} zoom={17} markers={[{ position: driverLoc, popup: 'Conductor' }, { position: pickupLoc, popup: 'Tú' }]} />
           </div>
           <div style={{ position: 'absolute', top: '54px', left: '16px', right: '16px', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg)', boxShadow: 'var(--sh)', zIndex: 20 }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--jade)', animation: 'trRing 1.6s ease-out infinite', flex: 'none' }}></div>
@@ -586,7 +586,7 @@ export default function HomePage() {
       {step === 'trip' && (
         <div style={{ position: 'absolute', inset: 0, animation: 'trFade .3s ease' }}>
           <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '580px', overflow: 'hidden', background: '#e0e0e0' }}>
-            <Map center={driverLoc} zoom={14} markers={[{ position: pickupLoc, popup: 'Origen' }, { position: dropoffLoc, popup: 'Destino' }, { position: driverLoc, popup: 'Conductor' }]} />
+            <Map center={driverLoc} zoom={16} markers={[{ position: pickupLoc, popup: 'Origen' }, { position: dropoffLoc, popup: 'Destino' }, { position: driverLoc, popup: 'Conductor' }]} />
           </div>
           <div style={{ position: 'absolute', top: '54px', left: '16px', right: '16px', padding: '14px 16px', borderRadius: '15px', background: 'var(--bg)', boxShadow: 'var(--sh)', zIndex: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
