@@ -33,10 +33,11 @@ export function AppProvider({ children }) {
         <div style={{ position: 'relative', width: '100%', maxWidth: '390px', height: '100vh', overflow: 'hidden' }}>
           {children}
           
-          {/* Global Theme Toggle */}
-          <button 
+          {/* Global Theme Toggle — discreto, arriba a la derecha, fuera del contenido y de la barra inferior */}
+          <button
             onClick={toggleTheme}
-            style={{ position: 'fixed', bottom: '84px', right: '16px', width: '48px', height: '48px', borderRadius: '50%', background: 'var(--inv)', color: 'var(--invtx)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, boxShadow: 'var(--sh)', transition: 'all 0.3s ease', border: '1px solid var(--bd)' }}
+            aria-label="Cambiar tema"
+            style={{ position: 'fixed', top: '14px', right: '14px', width: '30px', height: '30px', borderRadius: '50%', background: 'var(--sf)', color: 'var(--mu)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, boxShadow: 'none', border: '1px solid var(--bd2)', opacity: 0.55, fontSize: '13px', transition: 'opacity 0.2s ease' }}
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
