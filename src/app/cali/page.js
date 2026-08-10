@@ -269,7 +269,7 @@ export default function PassengerIntermunicipal() {
 
       {/* 2. SEAT SELECTION */}
       {step === 'seats' && selectedDeparture && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#fff', animation: 'trFade .3s ease' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: '#fff', animation: 'trFade .3s ease' }}>
 
           <div style={{ padding: '60px 16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button onClick={() => setStep('list')} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f8f8f8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -618,7 +618,7 @@ export default function PassengerIntermunicipal() {
           </div>
 
           {/* Bottom Sheet */}
-          <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', zIndex: 10, background: '#fff', borderTopLeftRadius: '32px', borderTopRightRadius: '32px', padding: '32px 24px', boxShadow: '0 -4px 32px rgba(0,0,0,0.1)' }}>
+          <div className="tr-sb" style={{ position: 'absolute', bottom: '0', left: '0', right: '0', maxHeight: '65dvh', overflowY: 'auto', zIndex: 10, background: '#fff', borderTopLeftRadius: '32px', borderTopRightRadius: '32px', padding: '32px 24px', boxShadow: '0 -4px 32px rgba(0,0,0,0.1)' }}>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '32px', position: 'relative' }}>
 
@@ -710,7 +710,7 @@ export default function PassengerIntermunicipal() {
             </div>
           </div>
 
-          <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', zIndex: 10, background: '#fff', borderTopLeftRadius: '32px', borderTopRightRadius: '32px', padding: '32px 24px', boxShadow: '0 -4px 32px rgba(0,0,0,0.1)' }}>
+          <div className="tr-sb" style={{ position: 'absolute', bottom: '0', left: '0', right: '0', maxHeight: '65dvh', overflowY: 'auto', zIndex: 10, background: '#fff', borderTopLeftRadius: '32px', borderTopRightRadius: '32px', padding: '32px 24px', boxShadow: '0 -4px 32px rgba(0,0,0,0.1)' }}>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#f4f4f3', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 18px Manrope,sans-serif' }}>{driverInitials}</div>

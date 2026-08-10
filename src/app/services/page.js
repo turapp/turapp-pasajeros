@@ -388,7 +388,7 @@ export default function ServicesPage() {
 
       {step === 'schedule' && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)', animation: 'trFade .25s ease' }}>
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '24px 20px 28px', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)' }}>
+          <div className="tr-sb" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '85dvh', overflowY: 'auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '24px 20px 28px', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                 <div style={{ font: '800 22px/1.2 Manrope,sans-serif', letterSpacing: '-.035em' }}>Reserva tu viaje</div>
                 <button onClick={() => setStep('services')} style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--sf)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

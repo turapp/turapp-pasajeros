@@ -29,8 +29,16 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{ theme, toggleTheme, lang, changeLang }}>
-      <div className="tr-app" data-theme={theme} style={{ position: 'relative', width: '100%', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--tx)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '390px', height: '100vh', overflow: 'hidden' }}>
+      {/* height:100vh aqui (en vez de 100dvh) NO coincidía con #iphone-wrapper
+          (globals.css), que sí usa 100dvh en el breakpoint móvil — en
+          celulares reales, con la barra de direcciones visible, 100vh es
+          más alto que el viewport realmente visible. Como cada pantalla
+          (step===X en page.js/home/cali) se posiciona con inset:0 relativo
+          a este div, quedaban ancladas a una caja más alta de lo visible:
+          el contenido del fondo (bottom nav, botones finales) se recortaba
+          fuera de la parte visible sin ningún scroll que lo alcanzara. */}
+      <div className="tr-app" data-theme={theme} style={{ position: 'relative', width: '100%', minHeight: '100dvh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--tx)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '390px', height: '100dvh', overflow: 'hidden' }}>
           {children}
           
           {/* Global Theme Toggle — discreto, arriba a la derecha, fuera del contenido y de la barra inferior */}

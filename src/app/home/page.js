@@ -704,7 +704,7 @@ export default function HomePage() {
           <div style={{ position: 'absolute', inset: 0, bottom: '130px' }}>
             <Map center={pickupLoc} zoom={19} markers={[{ position: pickupLoc, popup: 'Origen' }]} />
           </div>
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '20px 20px 28px', boxShadow: 'var(--sh)', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)' }}>
+          <div className="tr-sb" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '70dvh', overflowY: 'auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '20px 20px 28px', boxShadow: 'var(--sh)', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
               <div style={{ width: '26px', height: '26px', borderRadius: '50%', border: '2.5px solid var(--bd)', borderTopColor: 'var(--jade)', animation: 'trSpin .85s linear infinite', flex: 'none' }}></div>
               <div style={{ flex: 1 }}><div style={{ font: '800 18px Manrope,sans-serif', letterSpacing: '-.03em' }}>Buscando conductor...</div><div style={{ font: '500 12.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>Esto tomará unos segundos.</div></div>
@@ -724,7 +724,7 @@ export default function HomePage() {
             <div style={{ flex: 1, font: '700 14px Manrope,sans-serif' }}>El conductor va en camino</div>
             <div style={{ font: "800 14px 'IBM Plex Mono',monospace", color: 'var(--jade)' }}>3 min</div>
           </div>
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)', paddingBottom: '24px' }}>
+          <div className="tr-sb" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '70dvh', overflowY: 'auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)', paddingBottom: '24px' }}>
             <div style={{ padding: '9px 0 2px', display: 'flex', justifyContent: 'center' }}><div style={{ width: '38px', height: '4px', borderRadius: '3px', background: 'var(--bd)' }}></div></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '13px', padding: '12px 18px 16px' }}>
               <div style={{ position: 'relative', flex: 'none' }}>
@@ -773,7 +773,7 @@ export default function HomePage() {
               <div>{pickupAddress}</div><div>{dropoffAddress}</div>
             </div>
           </div>
-          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', padding: '16px 18px 24px' }}>
+          <div className="tr-sb" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '70dvh', overflowY: 'auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', padding: '16px 18px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '13px', marginBottom: '14px' }}>
               <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 14px Manrope,sans-serif', flex: 'none' }}>YM</div>
               <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '700 15px Manrope,sans-serif' }}>Yeison Mosquera</div><div style={{ font: '500 12px Manrope,sans-serif', color: 'var(--mu)' }}>WBC41D · Spark GT</div></div>
