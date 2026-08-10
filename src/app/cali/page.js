@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAppContext } from '../../context/AppProvider';
 import { supabase } from '../../lib/supabaseClient';
 import { caliService } from '../../lib/caliService';
-import { staticMapUrl } from '../../lib/maps';
+
+const Map = dynamic(() => import('../../components/Map'), { ssr: false, loading: () => <div style={{ background: '#f0f0f0', width: '100%', height: '100%' }} /> });
 
 export default function PassengerIntermunicipal() {
   const router = useRouter();
@@ -544,8 +546,9 @@ export default function PassengerIntermunicipal() {
           </div>
 
           <div style={{ margin: '0 24px 24px', borderRadius: '24px', border: '1px solid #eaeae8', overflow: 'hidden' }}>
-            <div style={{ height: '160px', background: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 15, size: '400x160', style: ['feature:all|element:labels|visibility:off', 'feature:water|color:0xcbd9e2', 'feature:landscape|color:0xecebe6'] })}) center/cover` }}>
-               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div style={{ height: '160px', position: 'relative' }}>
+               <Map center={[4.8829, -77.0267]} zoom={15} markers={[]} />
+               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px dashed #0f8a6d', opacity: 0.3, position: 'absolute' }}></div>
                  <div style={{ width: '160px', height: '160px', borderRadius: '50%', border: '2px dashed #0f8a6d', opacity: 0.2, position: 'absolute' }}></div>
                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#0f8a6d', border: '3px solid #fff', boxShadow: '0 4px 10px rgba(0,0,0,0.2)', zIndex: 10 }}></div>
@@ -594,8 +597,8 @@ export default function PassengerIntermunicipal() {
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: '#fff', animation: 'trFade .3s ease' }}>
 
           <div style={{ position: 'absolute', inset: 0, bottom: '400px', zIndex: 1, background: '#f0f0f0' }}>
-             <div style={{ width: '100%', height: '100%', backgroundImage: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 14, size: '400x800' })})`, backgroundSize: 'cover', opacity: 0.5 }}></div>
-             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+             <Map center={[4.8829, -77.0267]} zoom={15} markers={[{ position: [4.8829, -77.0267], popup: 'Muelle El Piñal' }]} />
+             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none">
                <polyline points="20,80 20,40 60,40 60,10" fill="none" stroke="#111" strokeWidth="2.5" />
                <circle cx="60" cy="10" r="2.5" fill="#0f8a6d" />
                <rect x="18" y="78" width="4" height="4" rx="1" fill="#111" />
@@ -680,8 +683,8 @@ export default function PassengerIntermunicipal() {
           </button>
 
           <div style={{ position: 'absolute', inset: 0, bottom: '200px', zIndex: 1, background: '#f0f0f0' }}>
-             <div style={{ width: '100%', height: '100%', backgroundImage: `url(${staticMapUrl({ center: '4.444,-76.522', zoom: 14, size: '400x800' })})`, backgroundSize: 'cover', opacity: 0.5 }}></div>
-             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2 }} viewBox="0 0 100 100" preserveAspectRatio="none">
+             <Map center={[4.167, -76.779]} zoom={8} markers={[{ position: [4.8829, -77.0267], popup: 'Buenaventura' }, { position: [3.4516, -76.5320], popup: 'Cali' }]} />
+             <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }} viewBox="0 0 100 100" preserveAspectRatio="none">
                <polyline points="20,80 80,20 80,10" fill="none" stroke="#ccc" strokeWidth="2" strokeDasharray="4 4" />
                <polyline points="20,80 40,60" fill="none" stroke="#111" strokeWidth="3" />
                <circle cx="40" cy="60" r="3" fill="#111" />
