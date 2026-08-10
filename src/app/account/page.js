@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import BottomNav from '../../components/BottomNav';
 import { useAppContext } from '../../context/AppProvider';
+import { tokenizeCardForm } from '../../lib/epayco';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -19,6 +20,11 @@ export default function AccountPage() {
   const [newMethodPhone, setNewMethodPhone] = useState('');
   const [savingMethod, setSavingMethod] = useState(false);
   const [methodError, setMethodError] = useState(null);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpMonth, setCardExpMonth] = useState('');
+  const [cardExpYear, setCardExpYear] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
+  const cardFormRef = useRef(null);
 
   const PAYMENT_TYPE_LABEL = { nequi: 'Nequi', daviplata: 'Daviplata', card: 'Tarjeta' };
 
@@ -87,6 +93,46 @@ export default function AccountPage() {
     setAddMethodType(null);
     setMethodError(null);
     loadPaymentMethods();
+  };
+
+  const handleAddCard = async () => {
+    const number = cardNumber.replace(/\s+/g, '');
+    if (number.length < 13 || !cardExpMonth || !cardExpYear || cardCvc.length < 3) return;
+    setSavingMethod(true);
+    setMethodError(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Debes iniciar sesión.');
+
+      // ePayco exige un correo en el formulario de tokenización
+      const emailField = cardFormRef.current?.querySelector('[data-epayco="card[email]"]');
+      if (emailField) emailField.value = user.email || `${user.id}@turapp.co`;
+
+      // La tarjeta va directo de este navegador a ePayco — nunca pasa por
+      // nuestro servidor ni se guarda en la base de datos.
+      const token = await tokenizeCardForm(cardFormRef.current);
+      if (!token) throw new Error('ePayco no devolvió un token válido.');
+      const last4 = number.slice(-4);
+
+      const { error } = await supabase.from('payment_methods').insert({
+        user_id: user.id,
+        type: 'card',
+        label: 'Tarjeta',
+        last4,
+        provider: 'epayco',
+        provider_token: String(token),
+        is_default: paymentMethods.length === 0,
+      });
+      if (error) throw error;
+
+      setCardNumber(''); setCardExpMonth(''); setCardExpYear(''); setCardCvc('');
+      setAddMethodType(null);
+      await loadPaymentMethods();
+    } catch (err) {
+      setMethodError(err.message || 'No se pudo guardar la tarjeta.');
+    } finally {
+      setSavingMethod(false);
+    }
   };
 
   const handleAddMethod = async () => {
@@ -393,9 +439,52 @@ export default function AccountPage() {
           )}
 
           {addMethodType === 'card' && (
-            <div style={{ background: 'var(--sf)', borderRadius: '16px', padding: '16px', font: '600 13px/1.5 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '20px' }}>
-              Aún no hemos conectado una pasarela de pago para tarjetas (Stripe, Wompi, PayU o MercadoPago). Por seguridad, nunca guardamos números de tarjeta directamente — hace falta activar una de esas pasarelas primero. Mientras tanto, usa Efectivo, Nequi o Daviplata.
-            </div>
+            <form ref={cardFormRef} onSubmit={(e) => e.preventDefault()} style={{ background: 'var(--sf)', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+              {/* ePayco exige nombre y correo del titular; los tomamos del perfil, sin pedirlos de nuevo */}
+              <input type="hidden" data-epayco="card[name]" defaultValue={profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Pasajero Turapp'} />
+              <input type="hidden" data-epayco="card[email]" defaultValue="" ref={(el) => { if (el) el.dataset.needsEmail = 'true'; }} />
+
+              <div style={{ font: '600 12px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '8px' }}>Número de tarjeta</div>
+              <input
+                type="text"
+                inputMode="numeric"
+                data-epayco="card[number]"
+                value={cardNumber}
+                onChange={(e) => setCardNumber(e.target.value)}
+                placeholder="4575 6231 8229 0326"
+                style={{ width: '100%', height: '48px', borderRadius: '12px', border: 'none', background: 'var(--bg)', padding: '0 14px', font: "600 15px 'IBM Plex Mono',monospace", color: 'var(--tx)', outline: 'none', marginBottom: '10px' }}
+              />
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                <input
+                  type="text" inputMode="numeric" maxLength={2}
+                  data-epayco="card[exp_month]"
+                  value={cardExpMonth} onChange={(e) => setCardExpMonth(e.target.value)}
+                  placeholder="MM"
+                  style={{ flex: 1, height: '48px', borderRadius: '12px', border: 'none', background: 'var(--bg)', padding: '0 14px', font: "600 15px 'IBM Plex Mono',monospace", color: 'var(--tx)', outline: 'none' }}
+                />
+                <input
+                  type="text" inputMode="numeric" maxLength={4}
+                  data-epayco="card[exp_year]"
+                  value={cardExpYear} onChange={(e) => setCardExpYear(e.target.value)}
+                  placeholder="AAAA"
+                  style={{ flex: 1, height: '48px', borderRadius: '12px', border: 'none', background: 'var(--bg)', padding: '0 14px', font: "600 15px 'IBM Plex Mono',monospace", color: 'var(--tx)', outline: 'none' }}
+                />
+                <input
+                  type="text" inputMode="numeric" maxLength={4}
+                  data-epayco="card[cvc]"
+                  value={cardCvc} onChange={(e) => setCardCvc(e.target.value)}
+                  placeholder="CVC"
+                  style={{ flex: 1, height: '48px', borderRadius: '12px', border: 'none', background: 'var(--bg)', padding: '0 14px', font: "600 15px 'IBM Plex Mono',monospace", color: 'var(--tx)', outline: 'none' }}
+                />
+              </div>
+              <div style={{ font: '500 11px/1.5 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '10px' }}>
+                Tu tarjeta se verifica directo con ePayco — nunca la guardamos nosotros. Esto solo la registra para pagos futuros, no hace ningún cobro ahora.
+              </div>
+              {methodError && <div style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '10px' }}>{methodError}</div>}
+              <button type="button" onClick={handleAddCard} disabled={savingMethod} style={{ width: '100%', height: '46px', borderRadius: '12px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 14px Manrope,sans-serif', border: 'none', opacity: savingMethod ? 0.6 : 1 }}>
+                {savingMethod ? 'Verificando...' : 'Guardar tarjeta'}
+              </button>
+            </form>
           )}
         </div>
       )}
