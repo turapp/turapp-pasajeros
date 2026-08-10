@@ -135,8 +135,8 @@ export default function Home() {
       )}
 
       {step === 'login' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '60px 24px 40px', background: '#fff', animation: 'trFade .4s ease' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '60px 24px 40px', background: '#fff', animation: 'trFade .4s ease' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', marginBottom: '24px' }}>
               <div style={{ font: '800 40px/1 Manrope,sans-serif', letterSpacing: '-.05em', color: '#000' }}>Turapp</div>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#33c39c', marginBottom: '6px' }}></div>
@@ -187,7 +187,7 @@ export default function Home() {
       )}
 
       {step === 'phone' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
           <button onClick={() => setStep('login')} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', border: 'none' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
@@ -212,7 +212,7 @@ export default function Home() {
       )}
       
       {step === 'otp' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
           <button onClick={() => setStep('phone')} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', border: 'none' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
@@ -233,7 +233,7 @@ export default function Home() {
       )}
 
       {step === 'register' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
+        <div className="tr-sb" style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '60px 24px 24px', animation: 'trSlideL .28s cubic-bezier(.2,.8,.2,1)', background: '#fff' }}>
           <div style={{ font: '800 28px/1.1 Manrope,sans-serif', letterSpacing: '-.04em', marginBottom: '8px', color: '#111' }}>Crea tu cuenta</div>
           <div style={{ font: '500 15px/1.5 Manrope,sans-serif', color: '#666', marginBottom: '32px' }}>¿Cómo te llamas?</div>
           
