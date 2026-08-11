@@ -27,6 +27,17 @@ export default function PassengerIntermunicipal() {
   const [bookingError, setBookingError] = useState(null);
 
   const [luggage, setLuggage] = useState('Ninguno'); // 'Ninguno', 'Pequeño', 'Grande'
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState('cash');
+
+  useEffect(() => {
+    async function loadDefaultMethod() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('payment_methods').select('type').eq('user_id', user.id).eq('is_default', true).single();
+      if (data) setDefaultPaymentMethod(data.type);
+    }
+    loadDefaultMethod();
+  }, []);
 
   const [now, setNow] = useState(() => Date.now());
 
@@ -92,7 +103,7 @@ export default function PassengerIntermunicipal() {
         setBookingLoading(false);
         return;
       }
-      const result = await caliService.reserveSeat(selectedSeat.id, selectedDeparture.id);
+      const result = await caliService.reserveSeat(selectedSeat.id, selectedDeparture.id, defaultPaymentMethod);
       setReservation(result.seat);
       setStep('confirmed');
     } catch (err) {

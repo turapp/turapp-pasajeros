@@ -20,6 +20,9 @@ export default function HomePage() {
   const [tripProg, setTripProg] = useState(0);
   const [tripId, setTripId] = useState(null);
   const [tripPin, setTripPin] = useState(null);
+  const [rateStars, setRateStars] = useState(5);
+  const [rateTip, setRateTip] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
   const [matchedDriverId, setMatchedDriverId] = useState(null);
   const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
   const [pickupLoc, setPickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
@@ -209,6 +212,8 @@ export default function HomePage() {
     setStep('searching');
     setPickupProg(0);
     setTripProg(0);
+    setRateStars(5);
+    setRateTip(0);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -819,24 +824,50 @@ export default function HomePage() {
             <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M10.5 3.5 5.5 8.5l5 5" stroke="var(--tx)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
           </button>
           <div style={{ font: '800 27px/1.12 Manrope,sans-serif', letterSpacing: '-.04em', marginBottom: '8px' }}>Has llegado a tu destino</div>
-          <div style={{ font: '500 13.5px/1.5 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '32px' }}>¿Qué tal estuvo tu viaje con Yeison?</div>
-          
+          <div style={{ font: '500 13.5px/1.5 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '32px' }}>¿Qué tal estuvo tu viaje?</div>
+
           <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '40px' }}>
             {[1, 2, 3, 4, 5].map((s) => (
-              <button key={s} style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="34" height="34" viewBox="0 0 34 34" fill="none"><path d="M17 2.8l4.3 9.4 10.3 1.1-7.7 7 2.2 10.1-9-5.1-9.1 5.1 2.2-10.1-7.7-7 10.3-1.1L17 2.8Z" fill={s <= 4 ? "var(--amber)" : "var(--sf2)"} stroke={s <= 4 ? "var(--amber)" : "var(--sf2)"} strokeWidth="2" strokeLinejoin="round"></path></svg>
+              <button key={s} onClick={() => setRateStars(s)} style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="34" height="34" viewBox="0 0 34 34" fill="none"><path d="M17 2.8l4.3 9.4 10.3 1.1-7.7 7 2.2 10.1-9-5.1-9.1 5.1 2.2-10.1-7.7-7 10.3-1.1L17 2.8Z" fill={s <= rateStars ? "var(--amber)" : "var(--sf2)"} stroke={s <= rateStars ? "var(--amber)" : "var(--sf2)"} strokeWidth="2" strokeLinejoin="round"></path></svg>
               </button>
             ))}
           </div>
-          
+
           <div style={{ font: '800 18px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '14px' }}>Dale una propina</div>
           <div style={{ display: 'flex', gap: '9px', marginBottom: '28px' }}>
-            <button style={{ flex: 1, height: '44px', borderRadius: '99px', background: 'var(--sf)', font: "700 14px 'IBM Plex Mono',monospace" }}>$1.000</button>
-            <button style={{ flex: 1, height: '44px', borderRadius: '99px', background: 'var(--inv)', color: 'var(--invtx)', font: "700 14px 'IBM Plex Mono',monospace" }}>$2.000</button>
-            <button style={{ flex: 1, height: '44px', borderRadius: '99px', background: 'var(--sf)', font: "700 14px 'IBM Plex Mono',monospace" }}>$3.000</button>
+            {[1000, 2000, 3000].map((amt) => (
+              <button key={amt} onClick={() => setRateTip(rateTip === amt ? 0 : amt)} style={{ flex: 1, height: '44px', borderRadius: '99px', background: rateTip === amt ? 'var(--inv)' : 'var(--sf)', color: rateTip === amt ? 'var(--invtx)' : 'var(--tx)', font: "700 14px 'IBM Plex Mono',monospace" }}>
+                ${amt.toLocaleString('es-CO')}
+              </button>
+            ))}
           </div>
           <button onClick={() => setStep('home')} style={{ height: '54px', borderRadius: '13px', background: 'var(--sf)', font: '700 16px Manrope,sans-serif', width: '100%', marginBottom: '16px' }}>Omitir</button>
-          <button onClick={() => setStep('home')} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%' }}>Enviar calificación</button>
+          <button
+            disabled={submittingRating}
+            onClick={async () => {
+              setSubmittingRating(true);
+              try {
+                if (tripId) {
+                  const { error } = await supabase.functions.invoke('rate-trip', {
+                    body: { trip_id: tripId, rating: rateStars || undefined, tip: rateTip || undefined, target: 'driver' },
+                  });
+                  if (error) {
+                    const body = await error.context?.json?.().catch(() => null);
+                    throw new Error(body?.error || error.message);
+                  }
+                }
+                setStep('home');
+              } catch (err) {
+                alert('No se pudo enviar: ' + err.message);
+              } finally {
+                setSubmittingRating(false);
+              }
+            }}
+            style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', opacity: submittingRating ? 0.6 : 1 }}
+          >
+            {submittingRating ? 'Enviando...' : 'Enviar calificación'}
+          </button>
         </div>
       )}
     </>

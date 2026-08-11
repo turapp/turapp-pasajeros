@@ -73,9 +73,9 @@ export const caliService = {
   },
 
   // Reservar un asiento (vía Edge Function: calcula precio, abono y registra el pago server-side)
-  async reserveSeat(seatId, departureId) {
+  async reserveSeat(seatId, departureId, paymentMethod) {
     const { data, error } = await supabase.functions.invoke('reserve-seat', {
-      body: { seat_id: seatId, departure_id: departureId },
+      body: { seat_id: seatId, departure_id: departureId, payment_method: paymentMethod },
     });
 
     if (error) {
