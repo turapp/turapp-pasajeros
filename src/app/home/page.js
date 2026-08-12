@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { supabase } from '../../lib/supabaseClient';
@@ -122,15 +122,10 @@ export default function HomePage() {
     loadSavedMethods();
   }, []);
 
-  // Escuchar actualizaciones del viaje real en Supabase
-  useEffect(() => {
-    if (!tripId) return;
-
-    const channel = supabase
-      .channel(`public:trips:id=eq.${tripId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, (payload) => {
-        console.log('Update de viaje:', payload.new);
-        const updatedTrip = payload.new;
+  // Aplica un cambio de estado del viaje. Lo usan tanto Realtime como el
+  // sondeo de respaldo, para que la lógica no se duplique.
+  const applyTripUpdate = useCallback((updatedTrip) => {
+        if (!updatedTrip) return;
         if (updatedTrip.status === 'matched') {
           setMatchedDriverId(updatedTrip.driver_id);
           setDriverArrived(false);
@@ -145,21 +140,50 @@ export default function HomePage() {
         } else if (updatedTrip.status === 'completed') {
           setStep('rate');
         } else if (updatedTrip.status === 'cancelled') {
+          // Puede venir de que el pasajero cancelara, o de que ningún
+          // conductor aceptara (reoffer-trip cancela el viaje al agotar la
+          // lista para que el pasajero no se quede esperando sin fin).
+          if (updatedTrip.cancelled_by === 'system') {
+            alert(updatedTrip.cancellation_reason || 'Ningún conductor aceptó el viaje. Intenta de nuevo.');
+          }
           setStep('home');
           setTripId(null);
           setMatchedDriverId(null);
           setDriverInfo(null);
           setDriverArrived(false);
         }
+  }, []);
+
+  // Escuchar actualizaciones del viaje real en Supabase
+  useEffect(() => {
+    if (!tripId) return;
+
+    const channel = supabase
+      .channel(`public:trips:id=eq.${tripId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, (payload) => {
+        applyTripUpdate(payload.new);
       })
       .subscribe((status, err) => {
         if (err) console.error("Error realtime:", err);
       });
 
+    // Respaldo: en red móvil la conexión de Realtime se cae con facilidad y
+    // el pasajero se quedaría mirando una pantalla que ya no corresponde al
+    // estado real del viaje. Se sondea cada 5s mientras el viaje esté vivo.
+    const poll = setInterval(async () => {
+      const { data } = await supabase
+        .from('trips')
+        .select('status, driver_id, cancelled_by, cancellation_reason')
+        .eq('id', tripId)
+        .maybeSingle();
+      applyTripUpdate(data);
+    }, 5000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(poll);
     };
-  }, [tripId]);
+  }, [tripId, applyTripUpdate]);
 
   // Sigue la posición real del conductor (driver_locations, la actualiza la
   // app de conductor por geolocalización) mientras va en camino o en viaje.
