@@ -24,6 +24,11 @@ export default function HomePage() {
   const [rateTip, setRateTip] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
   const [matchedDriverId, setMatchedDriverId] = useState(null);
+  // Datos reales del conductor asignado (nombre, vehículo, placa, rating) que
+  // devuelve assign-driver. Antes la pantalla mostraba un conductor fijo
+  // inventado, así que el pasajero no podía identificar el carro correcto.
+  const [driverInfo, setDriverInfo] = useState(null);
+  const [driverArrived, setDriverArrived] = useState(false);
   const [driverLoc, setDriverLoc] = useState([3.8822, -77.0250]);
   const [pickupLoc, setPickupLoc] = useState([3.8801, -77.0267]); // Buenaventura real (antes 4.88, mal ubicado)
   const [pickupAddress, setPickupAddress] = useState('Terminal Marítimo');
@@ -128,7 +133,13 @@ export default function HomePage() {
         const updatedTrip = payload.new;
         if (updatedTrip.status === 'matched') {
           setMatchedDriverId(updatedTrip.driver_id);
+          setDriverArrived(false);
           setStep('matched');
+        } else if (updatedTrip.status === 'arrived') {
+          // El conductor ya está en el punto de recogida. Antes este estado
+          // se ignoraba y el pasajero seguía viendo "va en camino".
+          setDriverArrived(true);
+          setPickupProg(100);
         } else if (updatedTrip.status === 'in_progress') {
           setStep('trip');
         } else if (updatedTrip.status === 'completed') {
@@ -137,6 +148,8 @@ export default function HomePage() {
           setStep('home');
           setTripId(null);
           setMatchedDriverId(null);
+          setDriverInfo(null);
+          setDriverArrived(false);
         }
       })
       .subscribe((status, err) => {
@@ -170,31 +183,18 @@ export default function HomePage() {
     return () => { supabase.removeChannel(channel); };
   }, [matchedDriverId, step]);
 
-  // Simulador visual de progreso para UI. Cuando no hay tripId real (modo
-  // demo: se pidió un taxi pero no había conductores en línea para aceptar),
-  // este mismo timer también hace avanzar los pasos solo, ya que no hay
-  // conductor real actualizando el estado del viaje por realtime.
+  // Barra de progreso puramente visual. El avance real entre pantallas
+  // (matched → trip → rate) lo dispara el conductor por Realtime; este timer
+  // solo anima la barra y nunca cambia de paso por su cuenta.
   useEffect(() => {
     let interval;
     if (step === 'matched') {
-      interval = setInterval(() => {
-        setPickupProg(p => {
-          const next = p < 100 ? p + 5 : 100;
-          if (next >= 100 && !tripId) setStep('trip');
-          return next;
-        });
-      }, 1000);
+      interval = setInterval(() => setPickupProg(p => (p < 100 ? p + 5 : 100)), 1000);
     } else if (step === 'trip') {
-      interval = setInterval(() => {
-        setTripProg(p => {
-          const next = p < 100 ? p + 2 : 100;
-          if (next >= 100 && !tripId) setStep('rate');
-          return next;
-        });
-      }, 1000);
+      interval = setInterval(() => setTripProg(p => (p < 100 ? p + 2 : 100)), 1000);
     }
     return () => clearInterval(interval);
-  }, [step, tripId]);
+  }, [step]);
 
   const shortcuts = [
     { name: "Terminal Marítimo", addr: "Cra. 1 #1-50, Comuna 3", glyph: "🏠", iconBg: "var(--sf2)" },
@@ -235,6 +235,11 @@ export default function HomePage() {
           dropoff_address: dropoffAddress,
           category: selectedVehicle,
           payment_method: paymentMethod,
+          // El precio que el pasajero negocia con los botones -500/+500 en
+          // "particular" (placa blanca, tarifa no regulada). Antes no se
+          // enviaba: el backend calculaba su propia tarifa y la oferta del
+          // pasajero se descartaba en silencio.
+          offered_fare: selectedVehicle === 'particular' ? particularFare : null,
         },
       });
 
@@ -245,15 +250,18 @@ export default function HomePage() {
 
       setTripId(data.trip_id);
       setTripPin(data.pin_code);
+      setDriverInfo(data.driver || null);
+      setDriverArrived(false);
 
     } catch (err) {
-      // Sin conductores en línea todavía (app de conductor en construcción):
-      // en vez de cortar el flujo, se simula la aceptación para poder
-      // probar el resto de las pantallas (matched/trip/rate). tripId queda
-      // null a propósito — así el timer de progreso de arriba sabe que debe
-      // avanzar los pasos solo, en lugar de esperar a un conductor real.
+      // La app de conductor ya está en producción, así que "no hay
+      // conductores" es información real. Antes se simulaba una aceptación
+      // falsa aquí: el pasajero veía un conductor en camino, un mapa
+      // moviéndose y una pantalla de calificación por un viaje que nunca
+      // existió. Ahora se le dice la verdad.
       if (err.message.includes('No hay conductores disponibles')) {
-        setTimeout(() => setStep('matched'), 2500);
+        alert('No hay conductores disponibles cerca en este momento. Intenta de nuevo en unos minutos.');
+        setStep('home');
         return;
       }
       alert("Error al pedir viaje: " + err.message);
@@ -754,25 +762,32 @@ export default function HomePage() {
           </div>
           <div style={{ position: 'absolute', top: '54px', left: '16px', right: '16px', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '14px', background: 'var(--bg)', boxShadow: 'var(--sh)', zIndex: 20 }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--jade)', animation: 'trRing 1.6s ease-out infinite', flex: 'none' }}></div>
-            <div style={{ flex: 1, font: '700 14px Manrope,sans-serif' }}>El conductor va en camino</div>
-            <div style={{ font: "800 14px 'IBM Plex Mono',monospace", color: 'var(--jade)' }}>3 min</div>
+            {/* El ETA que había aquí era un "3 min" fijo: no se calcula ninguna
+                ruta, así que mostrarlo era mentirle al pasajero. */}
+            <div style={{ flex: 1, font: '700 14px Manrope,sans-serif' }}>
+              {driverArrived ? 'Tu conductor ya llegó al punto de recogida' : 'El conductor va en camino'}
+            </div>
           </div>
           <div className="tr-sb" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '70dvh', overflowY: 'auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', animation: 'trUpS .34s cubic-bezier(.2,.8,.2,1)', paddingBottom: '24px' }}>
             <div style={{ padding: '9px 0 2px', display: 'flex', justifyContent: 'center' }}><div style={{ width: '38px', height: '4px', borderRadius: '3px', background: 'var(--bd)' }}></div></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '13px', padding: '12px 18px 16px' }}>
               <div style={{ position: 'relative', flex: 'none' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 16px Manrope,sans-serif' }}>YM</div>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 16px Manrope,sans-serif' }}>
+                  {driverInfo?.name ? driverInfo.name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase() : '🧍'}
+                </div>
                 <div style={{ position: 'absolute', bottom: '-3px', right: '-4px', display: 'flex', alignItems: 'center', gap: '2px', padding: '2px 6px', borderRadius: '99px', background: 'var(--tx)' }}>
                   <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M5 .8l1.3 2.7 3 .4-2.2 2.1.5 3L5 7.6 2.4 9l.5-3L.7 3.9l3-.4L5 .8Z" fill="var(--bg)"></path></svg>
-                  <div style={{ font: '700 8.5px Manrope,sans-serif', color: 'var(--bg)' }}>4.92</div>
+                  <div style={{ font: '700 8.5px Manrope,sans-serif', color: 'var(--bg)' }}>{Number(driverInfo?.rating ?? 5).toFixed(2)}</div>
                 </div>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: '700 16px Manrope,sans-serif', letterSpacing: '-.025em' }}>Yeison Mosquera</div>
-                <div style={{ font: '500 12.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>Chevrolet Spark GT · Gris</div>
+                <div style={{ font: '700 16px Manrope,sans-serif', letterSpacing: '-.025em' }}>{driverInfo?.name || 'Conductor asignado'}</div>
+                <div style={{ font: '500 12.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>
+                  {[driverInfo?.vehicle, driverInfo?.color].filter(Boolean).join(' · ') || 'Vehículo'}
+                </div>
               </div>
               <div style={{ textAlign: 'right', flex: 'none' }}>
-                <div style={{ display: 'inline-flex', padding: '5px 9px', borderRadius: '7px', background: 'var(--tx)', color: 'var(--bg)', font: "600 14px/1 'IBM Plex Mono',monospace", letterSpacing: '.06em' }}>WBC41D</div>
+                <div style={{ display: 'inline-flex', padding: '5px 9px', borderRadius: '7px', background: 'var(--tx)', color: 'var(--bg)', font: "600 14px/1 'IBM Plex Mono',monospace", letterSpacing: '.06em' }}>{driverInfo?.plate || '······'}</div>
                 <div style={{ font: '500 10px Manrope,sans-serif', color: 'var(--mu)', marginTop: '4px' }}>Placa</div>
               </div>
             </div>
@@ -797,7 +812,6 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--jade)', animation: 'trBlink 1.4s ease-in-out infinite', flex: 'none' }}></div>
               <div style={{ flex: 1, font: '700 14px Manrope,sans-serif' }}>En viaje</div>
-              <div style={{ font: "800 14px 'IBM Plex Mono',monospace" }}>12 min</div>
             </div>
             <div style={{ height: '5px', borderRadius: '3px', background: 'var(--sf2)', overflow: 'hidden' }}>
               <div style={{ height: '100%', borderRadius: '3px', background: 'var(--jade)', width: `${tripProg}%`, transition: 'width 1s linear' }}></div>
@@ -808,8 +822,15 @@ export default function HomePage() {
           </div>
           <div className="tr-sb" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '70dvh', overflowY: 'auto', background: 'var(--bg)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--sh)', padding: '16px 18px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '13px', marginBottom: '14px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 14px Manrope,sans-serif', flex: 'none' }}>YM</div>
-              <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '700 15px Manrope,sans-serif' }}>Yeison Mosquera</div><div style={{ font: '500 12px Manrope,sans-serif', color: 'var(--mu)' }}>WBC41D · Spark GT</div></div>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--sf2)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 14px Manrope,sans-serif', flex: 'none' }}>
+                {driverInfo?.name ? driverInfo.name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase() : '🧍'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ font: '700 15px Manrope,sans-serif' }}>{driverInfo?.name || 'Conductor asignado'}</div>
+                <div style={{ font: '500 12px Manrope,sans-serif', color: 'var(--mu)' }}>
+                  {[driverInfo?.plate, driverInfo?.vehicle].filter(Boolean).join(' · ') || 'Vehículo'}
+                </div>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '9px' }}>
               <div style={{ flex: 1, height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 14px Manrope,sans-serif', color: 'var(--mu)' }}>Viaje en curso...</div>
