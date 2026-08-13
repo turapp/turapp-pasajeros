@@ -8,16 +8,19 @@
 // en el distrito — como base de la tarifa mínima de Taxi y de Tura Favor.
 
 // ── Artículo Tercero: Límite Recorrido – Taxi ──────────────────────────────
-export const CARRERA_MINIMA = 2800; // trayectos < 2.5 km
+export const CARRERA_MINIMA = 6900; // trayectos < 2.5 km — tarifa vigente en Buenaventura
 export const RECARGO_NOCTURNO_TAXI = 400; // 7:00 p.m. – 5:00 a.m.
 export const RECARGO_DOMINICAL_FESTIVO_TAXI = 200; // domingos y festivos, 6:00 a.m. – 6:00 p.m.
 
 // ── Artículo Quinto: tarifa por horas, zona urbana ─────────────────────────
 export const TARIFA_HORA_TAXI = 23900;
 
-// Grupos de la misma tabla (referencia para trayectos más largos dentro de Buenaventura)
-export const GRUPOS_TAXI = [
-  { grupo: 'Carrera Mínima', hasta: 'Menos de 2.5 km', valor: 2800 },
+// Grupos por zona de la misma tabla. OJO: estos valores quedaron desfasados
+// cuando la Carrera Mínima subió a $6.900 — todos son menores que el piso, así
+// que ya no pueden ser tarifas reales. No se usan en ningún cálculo (la tarifa
+// sale de taxiEstimatedFare), quedan solo como referencia histórica hasta
+// tener la tabla por zonas actualizada.
+export const GRUPOS_TAXI_DESACTUALIZADOS = [
   { grupo: 'Grupo 1', hasta: 'Centro – Rockefeller', valor: 3400 },
   { grupo: 'Grupo 2', hasta: 'Centro – Bellavista', valor: 3500 },
   { grupo: 'Grupo 3', hasta: 'Centro – Transformación', valor: 3600 },
