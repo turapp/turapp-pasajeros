@@ -110,6 +110,7 @@ export default function HomePage() {
   const [bono, setBono] = useState(0);
   const [presion, setPresion] = useState(null);
 
+
   // Lee la presión de demanda de la zona para sugerir cuánto bono ofrecer.
   // Es lo mismo que miran Uber o DiDi para el surge, pero aquí no toca el
   // precio: solo cambia el mensaje y el monto sugerido.
@@ -147,7 +148,9 @@ export default function HomePage() {
       });
     return () => { vivo = false; };
   }, [step, pickupLoc]);
-  const [selectedVehicle, setSelectedVehicle] = useState(null); // 'taxi' | 'particular'
+  // Taxi es la única categoría que queda: obligar a tocarla sería fricción
+  // sin sentido, así que arranca seleccionada.
+  const [selectedVehicle, setSelectedVehicle] = useState('taxi');
   const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi' (directo al conductor) | 'card' (entra a Turapp)
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
 
@@ -727,7 +730,7 @@ export default function HomePage() {
                 {/* Atajos: bajan la fricción de decidir cuánto */}
                 {bono === 0 && (
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'center' }}>
-                    {[BONO_MIN, presion?.sugerido || 4000, 6000].filter((v, k, a) => a.indexOf(v) === k && v <= BONO_MAX).map(v => (
+                    {[...new Set([BONO_MIN, presion?.sugerido || 4000, Math.min(BONO_MAX, (presion?.sugerido || 4000) + 3000)])].filter(v => v >= BONO_MIN && v <= BONO_MAX).sort((a, b) => a - b).map(v => (
                       <button key={v} onClick={() => setBono(v)}
                         style={{ padding: '7px 14px', borderRadius: '99px', border: '1px solid var(--jade)', background: 'var(--bg)', color: 'var(--jade)', font: '700 12px Manrope,sans-serif' }}>
                         +${v.toLocaleString('es-CO')}
