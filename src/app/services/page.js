@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import BottomNav from '../../components/BottomNav';
 import { supabase } from '../../lib/supabaseClient';
-import { turaFavorServiceFee } from '../../lib/pricing';
+import { turaFavorServiceFee, taxiEstimatedFare, haversineKm } from '../../lib/pricing';
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -28,16 +28,22 @@ export default function ServicesPage() {
   };
 
   const PACKAGE_TYPE_MAP = { 'Documentos': 'documents', 'Comida': 'food', 'Llaves y objetos': 'keys_items', 'Compra en tienda': 'store_purchase' };
+  // Los mismos precios que quedaron en app_settings (favor_sobre, favor_paquete,
+  // favor_grande). Aquí decían 6.200 / 8.300, así que el pasajero veía un
+  // precio y el conductor cobraba otro.
   const PACKAGE_SIZE_MAP = {
-    'Sobre': { code: 'envelope', price: 6200 },
-    'Caja pequeña': { code: 'small_box', price: 8300 },
+    'Sobre': { code: 'envelope', price: 6900 },
+    'Caja pequeña': { code: 'small_box', price: 9900 },
     'Caja grande': { code: 'large_box', price: 14900 },
   };
   const [packageType, setPackageType] = useState('Documentos');
   const [packageSize, setPackageSize] = useState('Sobre');
-  const [recipientName, setRecipientName] = useState('Luisa Rentería');
-  const [recipientPhone, setRecipientPhone] = useState('+57 315 448 2201');
-  const [recipientAddress, setRecipientAddress] = useState('Calle 2 #8-15, Bellavista');
+  // Venían con una persona inventada precargada. Quien no leyera el formulario
+  // mandaba el paquete a nombre y teléfono de alguien que no existe.
+  const [senderAddress, setSenderAddress] = useState('');
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [recipientAddress, setRecipientAddress] = useState('');
   const [packageLoading, setPackageLoading] = useState(false);
   const [packageError, setPackageError] = useState(null);
 
@@ -50,6 +56,45 @@ export default function ServicesPage() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [scheduleError, setScheduleError] = useState(null);
 
+  // La reserva mandaba SIEMPRE Terminal Marítimo → Centro a las 6:30 a.m. por
+  // $19.700, sin importar lo que el pasajero quisiera: el único control era
+  // escoger el día. Confirmaba "tu reserva" y creaba un viaje ajeno.
+  const HORAS_RESERVA = ['05:00', '06:00', '06:30', '07:00', '08:00', '09:00', '12:00', '15:00', '17:00', '19:00'];
+  const [scheduleHora, setScheduleHora] = useState('06:30');
+  const [origen, setOrigen] = useState(null);      // { nombre, lat, lon }
+  const [destino, setDestino] = useState(null);
+  const [campo, setCampo] = useState(null);        // 'origen' | 'destino'
+  const [busqueda, setBusqueda] = useState('');
+  const [resultados, setResultados] = useState([]);
+  const [buscando, setBuscando] = useState(false);
+
+  useEffect(() => {
+    if (busqueda.trim().length < 2) { setResultados([]); return; }
+    setBuscando(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(busqueda)}`);
+        setResultados(await res.json());
+      } catch { setResultados([]); }
+      finally { setBuscando(false); }
+    }, 220);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+
+  const cuandoSale = () => {
+    const [h, m] = scheduleHora.split(':').map(Number);
+    const d = new Date(scheduleDays[scheduledDayIndex].date);
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+
+  // Precio con la tarifa real: Carrera Mínima del Decreto 0048 con sus
+  // recargos de noche y de domingo/festivo, más la distancia.
+  const kmReserva = origen && destino
+    ? haversineKm([origen.lat, origen.lon], [destino.lat, destino.lon])
+    : 0;
+  const precioReserva = taxiEstimatedFare(kmReserva, cuandoSale());
+
   const handleConfirmSchedule = async () => {
     setScheduleLoading(true);
     setScheduleError(null);
@@ -57,8 +102,10 @@ export default function ServicesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Debes iniciar sesión');
 
-      const scheduledFor = new Date(scheduleDays[scheduledDayIndex].date);
-      scheduledFor.setHours(6, 30, 0, 0);
+      if (!origen || !destino) throw new Error('Dinos de dónde te recogemos y para dónde vas.');
+
+      const scheduledFor = cuandoSale();
+      if (scheduledFor <= new Date()) throw new Error('Esa hora ya pasó. Escoge otra o programa para mañana.');
 
       // No pasa por assign-driver: es una reserva a futuro, no se busca conductor
       // todavía. La ventana de confirmación (30 min antes) queda pendiente de un
@@ -68,17 +115,17 @@ export default function ServicesPage() {
         category: 'taxi',
         status: 'requested',
         scheduled_for: scheduledFor.toISOString(),
-        pickup_location: 'SRID=4326;POINT(-77.0267 3.8801)',
-        pickup_address: 'Terminal Marítimo',
-        dropoff_location: 'SRID=4326;POINT(-77.0200 3.8772)',
-        dropoff_address: 'Centro',
-        fare_estimated: 19700, // TurConfort — placeholder hasta tener distancia real
+        pickup_location: `SRID=4326;POINT(${origen.lon} ${origen.lat})`,
+        pickup_address: origen.nombre,
+        dropoff_location: `SRID=4326;POINT(${destino.lon} ${destino.lat})`,
+        dropoff_address: destino.nombre,
+        fare_estimated: precioReserva,
         payment_method: 'cash',
       });
 
       if (error) throw error;
 
-      alert(`Reserva confirmada para el ${scheduledFor.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })} a las 6:30 a.m. Te confirmamos conductor 30 minutos antes.`);
+      alert(`Reserva confirmada para el ${scheduledFor.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${scheduleHora}. Te confirmamos conductor 30 minutos antes.`);
       setStep('services');
     } catch (err) {
       setScheduleError(err.message || 'No se pudo confirmar la reserva');
@@ -94,13 +141,20 @@ export default function ServicesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No has iniciado sesión');
 
+      if (!senderAddress.trim()) throw new Error('Falta dónde recogemos el paquete.');
+      if (!recipientName.trim() || !recipientPhone.trim() || !recipientAddress.trim()) {
+        throw new Error('Falta quién recibe: nombre, teléfono y dirección.');
+      }
+
       const sizeInfo = PACKAGE_SIZE_MAP[packageSize];
       const { error } = await supabase.from('packages').insert({
         rider_id: user.id,
         package_type: PACKAGE_TYPE_MAP[packageType] || 'documents',
         size: sizeInfo.code,
         price: sizeInfo.price,
-        pickup_address: 'Ubicación actual del remitente',
+        // Decía literalmente "Ubicación actual del remitente": el conductor
+        // aceptaba la encomienda sin saber a dónde ir a recogerla.
+        pickup_address: senderAddress,
         dropoff_address: recipientAddress,
         recipient_name: recipientName,
         recipient_phone: recipientPhone,
@@ -359,19 +413,25 @@ export default function ServicesPage() {
             ))}
           </div>
 
+          <div style={{ font: '700 14px Manrope,sans-serif', marginBottom: '10px' }}>¿Dónde lo recogemos?</div>
+          <div style={{ borderRadius: '13px', background: 'var(--sf)', overflow: 'hidden', marginBottom: '18px', padding: '13px 16px' }}>
+            <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Dirección de recogida</div>
+            <input value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="Ej: Calle 5 #3-20, Centro" style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
+          </div>
+
           <div style={{ font: '700 14px Manrope,sans-serif', marginBottom: '10px' }}>¿Quién recibe?</div>
           <div style={{ borderRadius: '13px', background: 'var(--sf)', overflow: 'hidden', marginBottom: '13px' }}>
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--bd2)' }}>
               <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Nombre</div>
-              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
+              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nombre de quien recibe" style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
             </div>
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--bd2)' }}>
               <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Celular</div>
-              <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: "600 14.5px 'IBM Plex Mono',monospace", color: 'var(--tx)' }} />
+              <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="300 000 0000" style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: "600 14.5px 'IBM Plex Mono',monospace", color: 'var(--tx)' }} />
             </div>
             <div style={{ padding: '13px 16px' }}>
               <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)', marginBottom: '2px' }}>Dirección de entrega</div>
-              <input value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value)} style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
+              <input value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value)} placeholder="Dirección de entrega" style={{ width: '100%', background: 'none', border: 'none', outline: 'none', font: '600 14.5px Manrope,sans-serif', color: 'var(--tx)' }} />
             </div>
           </div>
 
@@ -406,25 +466,74 @@ export default function ServicesPage() {
               ))}
             </div>
             
-            <div style={{ borderRadius: '13px', background: 'var(--sf)', overflow: 'hidden', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '15px 16px', borderBottom: '1px solid var(--bd2)' }}>
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="var(--tx)" strokeWidth="1.6"></circle><path d="M9 5.3V9l2.6 1.8" stroke="var(--tx)" strokeWidth="1.6" strokeLinecap="round"></path></svg>
-                <div style={{ flex: 1, font: '700 14.5px Manrope,sans-serif' }}>Ventana de recogida</div>
-                <div style={{ font: "700 14px 'IBM Plex Mono',monospace" }}>06:30 – 06:45</div>
+            {/* Hora */}
+            <div style={{ font: '700 10.5px Manrope,sans-serif', color: 'var(--mu)', letterSpacing: '.1em', marginBottom: '8px' }}>¿A QUÉ HORA?</div>
+            <div className="tr-sb" style={{ display: 'flex', gap: '7px', overflowX: 'auto', marginBottom: '16px', paddingBottom: '2px' }}>
+              {HORAS_RESERVA.map((h) => (
+                <button key={h} onClick={() => setScheduleHora(h)}
+                  style={{ flex: 'none', height: '40px', padding: '0 15px', borderRadius: '11px',
+                    background: scheduleHora === h ? 'var(--inv)' : 'var(--sf)',
+                    color: scheduleHora === h ? 'var(--invtx)' : 'var(--tx)',
+                    font: '700 12.5px Manrope,sans-serif', border: 'none' }}>
+                  {h}
+                </button>
+              ))}
+            </div>
+
+            {/* De dónde y para dónde */}
+            <div style={{ borderRadius: '13px', background: 'var(--sf)', overflow: 'hidden', marginBottom: '10px' }}>
+              {[['origen', 'Te recogemos en', origen], ['destino', 'Vas hasta', destino]].map(([id, label, valor]) => (
+                <button key={id} onClick={() => { setCampo(id); setBusqueda(''); setResultados([]); }}
+                  style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: id === 'origen' ? '1px solid var(--bd2)' : 'none' }}>
+                  <span style={{ width: '10px', height: '10px', flex: 'none', borderRadius: id === 'origen' ? '50%' : '2px', border: id === 'origen' ? '2.5px solid var(--jade)' : 'none', background: id === 'destino' ? 'var(--tx)' : 'transparent' }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', font: '600 10.5px Manrope,sans-serif', color: 'var(--mu)' }}>{label}</span>
+                    <span style={{ display: 'block', font: '700 13.5px Manrope,sans-serif', color: valor ? 'var(--tx)' : 'var(--mu)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {valor ? valor.nombre : 'Escribe la dirección'}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {campo && (
+              <div style={{ marginBottom: '14px' }}>
+                <input autoFocus value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder={campo === 'origen' ? '¿Dónde te recogemos?' : '¿A dónde vas?'}
+                  style={{ width: '100%', height: '46px', borderRadius: '12px', border: '1px solid var(--bd2)', background: 'var(--bg)', padding: '0 14px', font: '600 13.5px Manrope,sans-serif', color: 'var(--tx)' }} />
+                {buscando && <div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', padding: '8px 4px' }}>Buscando…</div>}
+                {resultados.slice(0, 4).map((r, i) => (
+                  <button key={i} onClick={() => {
+                      const punto = { nombre: r.display_name.split(',').slice(0, 2).join(',').trim(), lat: Number(r.lat), lon: Number(r.lon) };
+                      campo === 'origen' ? setOrigen(punto) : setDestino(punto);
+                      setCampo(null); setBusqueda(''); setResultados([]);
+                    }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '11px 13px', marginTop: '6px', borderRadius: '11px', background: 'var(--sf)', border: 'none', font: '600 12.5px/1.35 Manrope,sans-serif', color: 'var(--tx)' }}>
+                    {r.display_name.split(',').slice(0, 3).join(', ')}
+                  </button>
+                ))}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '15px 16px' }}>
-                <div style={{ position: 'relative', width: '26px', height: '15px', flex: 'none' }}>
-                    <div style={{ position: 'absolute', left: 0, bottom: '3px', width: '26px', height: '7px', borderRadius: '4px', background: 'var(--tx)' }}></div>
-                    <div style={{ position: 'absolute', left: '6px', bottom: '9px', width: '13px', height: '5px', borderRadius: '3px 4px 0 0', background: 'var(--tx)' }}></div>
+            )}
+
+            {/* Precio: tarifa legal con los recargos que apliquen a esa hora */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '15px 16px', borderRadius: '13px', background: 'var(--sf)', marginBottom: '14px' }}>
+              <span style={{ fontSize: '19px' }}>🚕</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ font: '700 14px Manrope,sans-serif' }}>Taxi</div>
+                <div style={{ font: '500 11px Manrope,sans-serif', color: 'var(--mu)' }}>
+                  {origen && destino ? `${kmReserva.toFixed(1)} km aprox.` : 'Escoge origen y destino para el precio'}
                 </div>
-                <div style={{ flex: 1, font: '700 14.5px Manrope,sans-serif' }}>TurConfort</div>
-                <div style={{ font: "700 14px 'IBM Plex Mono',monospace" }}>$19.700</div>
+              </div>
+              <div style={{ font: "700 15px 'IBM Plex Mono',monospace" }}>
+                {origen && destino ? `$${precioReserva.toLocaleString('es-CO')}` : `desde $${precioReserva.toLocaleString('es-CO')}`}
               </div>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '12px 14px', borderRadius: '12px', background: 'var(--jadeS)', marginBottom: '16px' }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flex: 'none' }}><path d="M4 8.4 6.8 11 12 5" stroke="var(--jade)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-              <div style={{ font: '600 11.5px/1.4 Manrope,sans-serif', color: 'var(--jade)' }}>Precio fijo. Si el conductor se demora, el viaje es gratis.</div>
+              <div style={{ font: '600 11.5px/1.4 Manrope,sans-serif', color: 'var(--jade)' }}>
+                Tarifa del Decreto 0048, con recargo de noche o de domingo si aplica. El conductor no te cobra de más.
+              </div>
             </div>
             {scheduleError && <div style={{ color: '#d32f2f', fontSize: '13px', marginBottom: '12px', textAlign: 'center' }}>{scheduleError}</div>}
             <button onClick={handleConfirmSchedule} disabled={scheduleLoading} style={{ height: '54px', borderRadius: '13px', background: 'var(--inv)', color: 'var(--invtx)', font: '700 16px Manrope,sans-serif', width: '100%', opacity: scheduleLoading ? 0.6 : 1 }}>
