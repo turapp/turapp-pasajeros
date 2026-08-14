@@ -9,8 +9,12 @@ import { taxiEstimatedFare, haversineKm, CARRERA_MINIMA } from '../../lib/pricin
 
 const Map = dynamic(() => import('../../components/Map'), { ssr: false, loading: () => <div style={{ background: '#eee', height: '100%' }} /> });
 
-const PAYMENT_METHOD_LABEL = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', card: 'Tarjeta' };
-const PAYMENT_METHOD_ICON = { cash: '💵', nequi: 'NQ', daviplata: 'DP', card: 'VISA' };
+// Solo Nequi y tarjeta. Nequi le llega directo al conductor; la tarjeta
+// entra a Turapp y se le liquida al conductor en el corte de cada 3 días.
+// 'cash' y 'daviplata' siguen existiendo en la base por los viajes viejos,
+// pero ya no se ofrecen.
+const PAYMENT_METHOD_LABEL = { nequi: 'Nequi', card: 'Tarjeta', cash: 'Efectivo', daviplata: 'Daviplata' };
+const PAYMENT_METHOD_ICON = { nequi: 'NQ', card: 'VISA', cash: '💵', daviplata: 'DP' };
 
 export default function HomePage() {
   const router = useRouter();
@@ -144,7 +148,7 @@ export default function HomePage() {
     return () => { vivo = false; };
   }, [step, pickupLoc]);
   const [selectedVehicle, setSelectedVehicle] = useState(null); // 'taxi' | 'particular'
-  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'nequi' | 'daviplata' | 'card'
+  const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi' (directo al conductor) | 'card' (entra a Turapp)
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
 
   useEffect(() => {
@@ -773,16 +777,21 @@ export default function HomePage() {
           </div>
           <div style={{ font: '800 20px Manrope,sans-serif', letterSpacing: '-.035em', marginBottom: '16px' }}>Métodos de pago</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <button onClick={() => setPaymentMethod('cash')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
-              <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 14px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>💵</div>
-              <div style={{ flex: 1, minWidth: 0 }}><div style={{ font: '600 15px Manrope,sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Efectivo</div></div>
-              {paymentMethod === 'cash' && (
+            {/* Nequi siempre disponible: el pasajero le transfiere directo al
+                conductor, así que no requiere tener nada guardado. */}
+            <button onClick={() => setPaymentMethod('nequi')} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
+              <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: '#p'.replace('#p','#2E0A57'), display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 10px Manrope,sans-serif', color: '#fff', flex: 'none', letterSpacing: '.03em' }}>NQ</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ font: '600 15px Manrope,sans-serif' }}>Nequi</div>
+                <div style={{ font: '500 11.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '1px' }}>Le transfieres directo al conductor</div>
+              </div>
+              {paymentMethod === 'nequi' && (
                 <div style={{ width: '23px', height: '23px', borderRadius: '50%', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.6 6.2 4.8 8.4 9.4 3.6" stroke="var(--bg)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"></path></svg>
                 </div>
               )}
             </button>
-            {savedPaymentMethods.map((m) => (
+            {savedPaymentMethods.filter(m => m.type === 'card').map((m) => (
               <button key={m.id} onClick={() => setPaymentMethod(m.type)} style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%', padding: '15px 0', textAlign: 'left', borderBottom: '1px solid var(--bd2)' }}>
                 <div style={{ width: '38px', height: '26px', borderRadius: '5px', background: 'var(--inv)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '800 8.5px Manrope,sans-serif', color: 'var(--bg)', flex: 'none', letterSpacing: '.03em' }}>{PAYMENT_METHOD_ICON[m.type]}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
