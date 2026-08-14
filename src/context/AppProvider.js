@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import ThemeToggle from '../components/ThemeToggle';
 
 const AppContext = createContext();
 
@@ -41,14 +42,7 @@ export function AppProvider({ children }) {
         <div style={{ position: 'relative', width: '100%', maxWidth: '390px', height: '100dvh', overflow: 'hidden' }}>
           {children}
           
-          {/* Global Theme Toggle — discreto, arriba a la derecha, fuera del contenido y de la barra inferior */}
-          <button
-            onClick={toggleTheme}
-            aria-label="Cambiar tema"
-            style={{ position: 'fixed', top: '14px', right: '14px', width: '30px', height: '30px', borderRadius: '50%', background: 'var(--sf)', color: 'var(--mu)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, boxShadow: 'none', border: '1px solid var(--bd2)', opacity: 0.55, fontSize: '13px', transition: 'opacity 0.2s ease' }}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </div>
     </AppContext.Provider>
