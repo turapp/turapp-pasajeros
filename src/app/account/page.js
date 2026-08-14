@@ -233,6 +233,20 @@ export default function AccountPage() {
             </div>
           </div>
           
+          {/* Invita y gana — el gancho de crecimiento va arriba, no escondido
+              entre las opciones de cuenta. */}
+          <button onClick={() => router.push('/referrals')}
+            style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', marginBottom: '28px', padding: '18px 20px', borderRadius: '18px', background: 'linear-gradient(135deg,#1a1330 0%,#3d2168 100%)', color: '#fff', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontSize: '26px', flex: 'none' }}>🎁</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ font: '800 15.5px Manrope,sans-serif', letterSpacing: '-.02em' }}>Invita y gana viajes gratis</div>
+              <div style={{ font: '500 12px/1.45 Manrope,sans-serif', opacity: .75, marginTop: '3px' }}>
+                Y comisión de por vida por cada viaje de tus invitados.
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" style={{ flex: 'none', opacity: .7 }}><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+
           {/* Payment Methods (Wallet Style) */}
           <div style={{ font: '800 18px Manrope,sans-serif', letterSpacing: '-.03em', marginBottom: '16px', color: 'var(--tx)' }}>Pago</div>
           <button onClick={openPayments} style={{ width: '100%', background: 'var(--sf)', borderRadius: '16px', padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: 'none', boxShadow: 'var(--sh2)', cursor: 'pointer', marginBottom: '32px' }}>

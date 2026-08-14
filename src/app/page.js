@@ -107,7 +107,12 @@ export default function Home() {
         .eq('id', user.id);
         
       if (error) throw error;
-      
+
+      // Arranca su secuencia de correos de pasajero. Sin await: si MailerLite
+      // falla, el registro sigue igual.
+      supabase.functions.invoke('mailerlite-suscribir', { body: {} })
+        .catch((e) => console.error('MailerLite:', e));
+
       setStep('benefits');
       setLoading(false);
     } catch (err) {
