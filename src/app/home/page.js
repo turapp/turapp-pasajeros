@@ -99,9 +99,50 @@ export default function HomePage() {
   // ajusta con los botones +/-.
   const distanceKm = haversineKm(pickupLoc, dropoffLoc);
   const taxiFare = taxiEstimatedFare(distanceKm);
-  const [particularOffer, setParticularOffer] = useState(null);
-  const particularBase = Math.max(CARRERA_MINIMA, taxiFare - 3000);
-  const particularFare = particularOffer ?? particularBase;
+  // Bono de prioridad: plata que el pasajero decide agregar y que va COMPLETA
+  // al conductor. No es tarifa — la del taxi la fija el Decreto 0048 y no se
+  // puede mover — sino un incentivo para conseguir carro más rápido.
+  const BONO_MIN = 2000, BONO_MAX = 10000, BONO_PASO = 500;
+  const [bono, setBono] = useState(0);
+  const [presion, setPresion] = useState(null);
+
+  // Lee la presión de demanda de la zona para sugerir cuánto bono ofrecer.
+  // Es lo mismo que miran Uber o DiDi para el surge, pero aquí no toca el
+  // precio: solo cambia el mensaje y el monto sugerido.
+  useEffect(() => {
+    if (step !== 'select' || !pickupLoc) return;
+    let vivo = true;
+    supabase.rpc('presion_demanda', { p_lat: pickupLoc[0], p_lon: pickupLoc[1], p_radio: 5000 })
+      .then(({ data }) => {
+        const d = Array.isArray(data) ? data[0] : data;
+        if (!vivo || !d) return;
+
+        // Se toma el factor más fuerte, no la suma: si es de noche Y hay
+        // pocos carros, manda la escasez, que es el que de verdad frena.
+        let sugerido = 0, etiqueta = null, mensaje = null;
+        if (d.nivel >= 3) {
+          sugerido = 6000; etiqueta = 'Muy pocos carros';
+          mensaje = 'Casi no hay taxis libres cerca. Un bono hace que tu viaje se ofrezca de primero.';
+        } else if (d.nivel === 2) {
+          sugerido = 4000; etiqueta = 'Alta demanda';
+          mensaje = 'Hay más solicitudes que taxis disponibles. Con bono consigues carro más rápido.';
+        } else if (d.es_noche) {
+          sugerido = 3000; etiqueta = 'Noche';
+          mensaje = 'A esta hora circulan menos taxis. Un bono ayuda a que alguien tome tu viaje.';
+        } else if (d.es_pico) {
+          sugerido = 2000; etiqueta = 'Hora pico';
+          mensaje = 'Es hora pico y los taxis están ocupados. Con bono te atienden antes.';
+        } else if (d.es_festivo) {
+          sugerido = 2000; etiqueta = 'Festivo';
+          mensaje = 'Hoy hay menos taxis en la calle. Un bono te da prioridad.';
+        } else if (d.nivel === 1) {
+          sugerido = 2000; etiqueta = 'Pocos carros';
+          mensaje = 'Quedan pocos taxis cerca. Un bono te pone de primero en la fila.';
+        }
+        setPresion({ ...d, sugerido, etiqueta, mensaje });
+      });
+    return () => { vivo = false; };
+  }, [step, pickupLoc]);
   const [selectedVehicle, setSelectedVehicle] = useState(null); // 'taxi' | 'particular'
   const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'nequi' | 'daviplata' | 'card'
   const [savedPaymentMethods, setSavedPaymentMethods] = useState([]);
@@ -259,11 +300,8 @@ export default function HomePage() {
           dropoff_address: dropoffAddress,
           category: selectedVehicle,
           payment_method: paymentMethod,
-          // El precio que el pasajero negocia con los botones -500/+500 en
-          // "particular" (placa blanca, tarifa no regulada). Antes no se
-          // enviaba: el backend calculaba su propia tarifa y la oferta del
-          // pasajero se descartaba en silencio.
-          offered_fare: selectedVehicle === 'particular' ? particularFare : null,
+          // El bono va aparte de la tarifa: el conductor lo recibe completo.
+          priority_bonus: bono,
         },
       });
 
@@ -646,25 +684,59 @@ export default function HomePage() {
                 <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)' }}>${taxiFare.toLocaleString('es-CO')}</div>
               </button>
 
-              {/* Particular */}
-              <div onClick={() => setSelectedVehicle('particular')} style={{ width: '100%', padding: '16px', margin: '8px 0', borderRadius: '16px', border: selectedVehicle === 'particular' ? '2px solid var(--tx)' : '2px solid transparent', background: selectedVehicle === 'particular' ? 'var(--sf)' : 'transparent', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                  <img src="/images/car.png" style={{ width: '64px', height: '64px', objectFit: 'contain', flex: 'none', marginRight: '12px' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '20px', height: '20px', background: 'var(--jade)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg></div>
-                        <div style={{ font: '700 16px Manrope,sans-serif', color: 'var(--tx)' }}>Particular</div>
-                      </div>
-                      <div style={{ background: 'var(--jadeS)', color: 'var(--jade)', padding: '4px 8px', borderRadius: '4px', font: '600 12px Manrope,sans-serif' }}>Negociable</div>
+              {/* Bono de prioridad — reemplaza la negociación de Particular.
+                  La tarifa del taxi no se toca (Decreto 0048); esto es un
+                  incentivo aparte que recibe el conductor completo. */}
+              <div style={{ margin: '8px 0', padding: '16px', borderRadius: '16px', background: bono > 0 ? 'var(--jadeS)' : 'var(--sf)', border: bono > 0 ? '2px solid var(--jade)' : '2px solid transparent', transition: 'all .2s ease' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <div style={{ font: '700 15px Manrope,sans-serif', color: 'var(--tx)' }}>Bono de prioridad</div>
+                  {presion && presion.etiqueta && (
+                    <div style={{ background: 'var(--tx)', color: 'var(--bg)', padding: '3px 9px', borderRadius: '99px', font: '700 10.5px Manrope,sans-serif' }}>
+                      {presion.etiqueta}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '12px' }}>
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedVehicle('particular'); setParticularOffer(p => Math.max(CARRERA_MINIMA, (p ?? particularBase) - 500)); }} style={{ width: '48px', height: '32px', borderRadius: '16px', border: '1px solid #e0e0e0', font: '600 14px Manrope,sans-serif' }}>-500</button>
-                      <div style={{ font: '700 20px Manrope,sans-serif', color: 'var(--tx)' }}>${particularFare.toLocaleString('es-CO')}</div>
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedVehicle('particular'); setParticularOffer(p => (p ?? particularBase) + 500); }} style={{ width: '48px', height: '32px', borderRadius: '16px', border: '1px solid #e0e0e0', font: '600 14px Manrope,sans-serif' }}>+500</button>
-                    </div>
-                  </div>
+                  )}
                 </div>
+
+                <div style={{ font: '400 12.5px/1.45 Manrope,sans-serif', color: 'var(--mu)', marginBottom: '12px' }}>
+                  {presion?.mensaje || 'Agrega un bono y tu viaje se ofrece primero. Va completo al conductor.'}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '18px' }}>
+                  <button onClick={() => setBono(b => Math.max(0, b - BONO_PASO))} disabled={bono === 0}
+                    style={{ width: '48px', height: '36px', borderRadius: '18px', border: '1px solid #e0e0e0', background: 'var(--bg)', font: '600 14px Manrope,sans-serif', color: bono === 0 ? '#c9c9c9' : 'var(--tx)' }}>
+                    −500
+                  </button>
+                  <div style={{ textAlign: 'center', minWidth: '92px' }}>
+                    <div style={{ font: '800 22px Manrope,sans-serif', color: bono > 0 ? 'var(--jade)' : 'var(--mu)', letterSpacing: '-.02em' }}>
+                      {bono > 0 ? `+$${bono.toLocaleString('es-CO')}` : 'Sin bono'}
+                    </div>
+                    {bono > 0 && (
+                      <div style={{ font: '600 10.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>para el conductor</div>
+                    )}
+                  </div>
+                  <button onClick={() => setBono(b => Math.min(BONO_MAX, Math.max(BONO_MIN, b + BONO_PASO)))} disabled={bono >= BONO_MAX}
+                    style={{ width: '48px', height: '36px', borderRadius: '18px', border: '1px solid #e0e0e0', background: 'var(--bg)', font: '600 14px Manrope,sans-serif', color: bono >= BONO_MAX ? '#c9c9c9' : 'var(--tx)' }}>
+                    +500
+                  </button>
+                </div>
+
+                {/* Atajos: bajan la fricción de decidir cuánto */}
+                {bono === 0 && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'center' }}>
+                    {[BONO_MIN, presion?.sugerido || 4000, 6000].filter((v, k, a) => a.indexOf(v) === k && v <= BONO_MAX).map(v => (
+                      <button key={v} onClick={() => setBono(v)}
+                        style={{ padding: '7px 14px', borderRadius: '99px', border: '1px solid var(--jade)', background: 'var(--bg)', color: 'var(--jade)', font: '700 12px Manrope,sans-serif' }}>
+                        +${v.toLocaleString('es-CO')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {bono >= BONO_MAX && (
+                  <div style={{ font: '600 11px Manrope,sans-serif', color: 'var(--mu)', textAlign: 'center', marginTop: '9px' }}>
+                    Llegaste al bono máximo.
+                  </div>
+                )}
               </div>
 
             </div>
@@ -680,7 +752,7 @@ export default function HomePage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
               </button>
               <button onClick={handleRequestTrip} disabled={!selectedVehicle} style={{ width: '100%', height: '56px', background: selectedVehicle ? 'var(--tx)' : 'var(--sf2)', color: selectedVehicle ? 'var(--bg)' : 'var(--mu)', borderRadius: '12px', font: '700 18px Manrope,sans-serif', transition: 'all 0.2s ease' }}>
-                {selectedVehicle ? `Confirmar viaje · $${(selectedVehicle === 'taxi' ? taxiFare : particularFare).toLocaleString('es-CO')}` : 'Elige un vehículo'}
+                {selectedVehicle ? `Confirmar viaje · $${(taxiFare + bono).toLocaleString('es-CO')}` : 'Elige un vehículo'}
               </button>
             </div>
           </div>
