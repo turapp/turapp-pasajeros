@@ -109,6 +109,10 @@ export default function HomePage() {
   const BONO_MIN = 2000, BONO_MAX = 10000, BONO_PASO = 500;
   const [bono, setBono] = useState(0);
   const [presion, setPresion] = useState(null);
+  // Confort no es otra tarifa: es el mismo taxi, filtrado a los que tienen
+  // aire verificado. Como hay menos, se sugiere un bono mayor.
+  const [confort, setConfort] = useState(false);
+  const [confortCerca, setConfortCerca] = useState(null);
 
 
   // Lee la presión de demanda de la zona para sugerir cuánto bono ofrecer.
@@ -146,6 +150,12 @@ export default function HomePage() {
         }
         setPresion({ ...d, sugerido, etiqueta, mensaje });
       });
+
+    // Si no hay ningún taxi con aire cerca, no se ofrece la opción: mostrar
+    // algo que va a fallar se siente roto.
+    supabase.rpc('hay_confort_cerca', { p_lat: pickupLoc[0], p_lon: pickupLoc[1], p_radio: 5000 })
+      .then(({ data }) => { if (vivo) setConfortCerca(Number(data) || 0); });
+
     return () => { vivo = false; };
   }, [step, pickupLoc]);
   // Taxi es la única categoría que queda: obligar a tocarla sería fricción
@@ -306,6 +316,7 @@ export default function HomePage() {
           pickup_address: pickupAddress,
           dropoff_address: dropoffAddress,
           category: selectedVehicle,
+          confort,
           payment_method: paymentMethod,
           // El bono va aparte de la tarifa: el conductor lo recibe completo.
           priority_bonus: bono,
@@ -676,20 +687,42 @@ export default function HomePage() {
             
             <div className="tr-sb" style={{ flex: 1, overflowY: 'auto', padding: '0 16px', minHeight: 0 }}>
               
-              {/* Taxi */}
-              <button onClick={() => setSelectedVehicle('taxi')} style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '16px', margin: '8px 0', borderRadius: '16px', border: selectedVehicle === 'taxi' ? '2px solid var(--tx)' : '2px solid transparent', background: selectedVehicle === 'taxi' ? 'var(--sf)' : 'transparent', textAlign: 'left', transition: 'all 0.2s ease' }}>
-                <img src="/images/car.png" style={{ width: '64px', height: '64px', objectFit: 'contain', flex: 'none', marginRight: '12px' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ font: '700 16px Manrope,sans-serif', color: 'var(--tx)' }}>Taxi</div>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--tx)" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                    <div style={{ font: '600 12px Manrope,sans-serif' }}>4</div>
-                  </div>
-                  <div style={{ font: '400 13px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>en 5 min • 10:18</div>
-                  <div style={{ font: '400 13px Manrope,sans-serif', color: 'var(--mu)', marginTop: '2px' }}>Rápido y confiable · taxímetro Decreto 0048/2026</div>
+              {/* Taxi y Taxi Confort. Misma tarifa: el Decreto 0048 la fija
+                  igual con aire o sin aire. Lo único que cambia es a quién se
+                  le ofrece el viaje. */}
+              {[
+                { id: false, nombre: 'Taxi', desc: 'Rápido y confiable · taxímetro Decreto 0048/2026', chip: null },
+                { id: true,  nombre: 'Taxi Confort', desc: 'Con aire acondicionado verificado', chip: 'Aire ❄️' },
+              ].filter(op => !op.id || confortCerca === null || confortCerca > 0).map((op) => {
+                const activo = confort === op.id;
+                return (
+                  <button key={String(op.id)} onClick={() => { setSelectedVehicle('taxi'); setConfort(op.id); }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '16px', margin: '8px 0', borderRadius: '16px', border: activo ? '2px solid var(--tx)' : '2px solid transparent', background: activo ? 'var(--sf)' : 'transparent', textAlign: 'left', transition: 'all 0.2s ease' }}>
+                    <img src="/images/car.png" style={{ width: '64px', height: '64px', objectFit: 'contain', flex: 'none', marginRight: '12px' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ font: '700 16px Manrope,sans-serif', color: 'var(--tx)' }}>{op.nombre}</div>
+                        {op.chip && (
+                          <div style={{ background: 'var(--jadeS)', color: 'var(--jade)', padding: '2px 8px', borderRadius: '99px', font: '700 10.5px Manrope,sans-serif' }}>{op.chip}</div>
+                        )}
+                      </div>
+                      <div style={{ font: '400 12.5px Manrope,sans-serif', color: 'var(--mu)', marginTop: '3px' }}>{op.desc}</div>
+                      {op.id && confortCerca > 0 && (
+                        <div style={{ font: '600 11px Manrope,sans-serif', color: 'var(--mu)', marginTop: '3px' }}>
+                          {confortCerca} disponible{confortCerca === 1 ? '' : 's'} cerca
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)', flex: 'none' }}>${taxiFare.toLocaleString('es-CO')}</div>
+                  </button>
+                );
+              })}
+
+              {confort && (
+                <div style={{ margin: '0 0 4px', padding: '10px 13px', borderRadius: '11px', background: 'var(--sf)', font: '500 11.5px/1.5 Manrope,sans-serif', color: 'var(--mu)' }}>
+                  Misma tarifa que un taxi normal. Como hay menos carros con aire, un bono ayuda a conseguirlo más rápido.
                 </div>
-                <div style={{ font: '700 18px Manrope,sans-serif', color: 'var(--tx)' }}>${taxiFare.toLocaleString('es-CO')}</div>
-              </button>
+              )}
 
               {/* Bono de prioridad — reemplaza la negociación de Particular.
                   La tarifa del taxi no se toca (Decreto 0048); esto es un
